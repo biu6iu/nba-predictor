@@ -1,5 +1,8 @@
+from datetime import datetime, timezone
+
 import joblib
 import numpy as np
+import sklearn
 import xgboost as xgb
 from bayes_opt import BayesianOptimization
 from sklearn.calibration import CalibratedClassifierCV
@@ -13,6 +16,7 @@ from src.config import (
     BAYES_OPT_PBOUNDS,
     CALIBRATION_TEST_SIZE,
     FEATURE_COLS,
+    MODEL_ARTEFACT_KEYS,
     TARGET_COL,
     TARGET_PRECISION,
     TEST_SEASON,
@@ -119,8 +123,20 @@ def train(df) -> tuple:
     valid_idx = np.where(precision[:-1] >= TARGET_PRECISION)[0]
     best_threshold = float(thresholds[valid_idx[np.argmax(recall[valid_idx])]])
 
-    # Serialise model
+    # Serialise the model together with everything needed to use and audit it
+    artefact = {
+        "model":           calibrated_model,
+        "threshold":       best_threshold,
+        "best_params":     dict(best_params),
+        "feature_cols":    list(FEATURE_COLS),
+        "sklearn_version": sklearn.__version__,
+        "xgboost_version": xgb.__version__,
+        "trained_at":      datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "train_seasons":   list(TRAIN_SEASONS),
+    }
+    assert set(artefact) == set(MODEL_ARTEFACT_KEYS)
+
     ARTEFACTS_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(calibrated_model, ARTEFACTS_DIR / "model.pkl")
+    joblib.dump(artefact, ARTEFACTS_DIR / "model.pkl")
 
     return calibrated_model, best_threshold, best_params
