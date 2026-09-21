@@ -6,6 +6,7 @@ import sklearn
 import xgboost as xgb
 from bayes_opt import BayesianOptimization
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.frozen import FrozenEstimator
 from sklearn.metrics import log_loss, precision_recall_curve
 from sklearn.model_selection import TimeSeriesSplit, train_test_split
 
@@ -93,7 +94,13 @@ def train(df) -> tuple:
     best_params["max_depth"]    = int(round(best_params["max_depth"]))
     best_params["n_estimators"] = int(round(best_params["n_estimators"]))
 
-    # fit final model on full training set
+    # fit model on 80% of the data, with 20% going to calibration
+    X_fit, X_calib, y_fit, y_calib = train_test_split(
+        X_train, y_train,
+        test_size=CALIBRATION_TEST_SIZE,
+        shuffle=False,
+    )
+
     model = xgb.XGBClassifier(
         **best_params,
         objective="binary:logistic",
@@ -101,18 +108,12 @@ def train(df) -> tuple:
         n_jobs=-1,
         random_state=42,
     )
-    model.fit(X_train, y_train)
+    model.fit(X_fit, y_fit)
 
-    # Platt scaling calibration on a held-out split of training data
-    _, X_calib, _, y_calib = train_test_split(
-        X_train, y_train,
-        test_size=CALIBRATION_TEST_SIZE,
-        random_state=42,
-    )
+    # Platt scaling on the held-out later games, FrozenEstimator keeps the model as fitted
     calibrated_model = CalibratedClassifierCV(
-        estimator=model,
+        estimator=FrozenEstimator(model),
         method="sigmoid",
-        cv="prefit",
     )
     calibrated_model.fit(X_calib, y_calib)
 
