@@ -92,3 +92,16 @@ BAYES_OPT_N_ITER = 60
 TSCV_N_SPLITS = 5
 CALIBRATION_TEST_SIZE = 0.2
 TARGET_PRECISION = 0.65
+
+# Keys stored in artefacts/model.pkl (written by src/model.py, read by the dashboard)
+
+MODEL_ARTEFACT_KEYS = (
+    "model",
+    "threshold",
+    "best_params",
+    "feature_cols",
+    "sklearn_version",
+    "xgboost_version",
+    "trained_at",
+    "train_seasons",
+)

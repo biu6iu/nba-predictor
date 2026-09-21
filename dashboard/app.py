@@ -6,7 +6,9 @@ import joblib
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import sklearn
 import streamlit as st
+import xgboost as xgb
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import (
     confusion_matrix,
@@ -17,7 +19,14 @@ from sklearn.metrics import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.config import ARTEFACTS_DIR, FEATURE_COLS, TARGET_COL, TEST_SEASON, VAL_SEASON
+from src.config import (
+    ARTEFACTS_DIR,
+    FEATURE_COLS,
+    MODEL_ARTEFACT_KEYS,
+    TARGET_COL,
+    TEST_SEASON,
+    VAL_SEASON,
+)
 
 st.set_page_config(page_title="NBA Winner Predictor", layout="wide")
 
@@ -30,7 +39,10 @@ _RED   = "#C0392B"
 
 @st.cache_resource
 def load_model():
-    return joblib.load(ARTEFACTS_DIR / "model.pkl")
+    artefact = joblib.load(ARTEFACTS_DIR / "model.pkl")
+    if not isinstance(artefact, dict) or not set(MODEL_ARTEFACT_KEYS) <= set(artefact):
+        raise ValueError("model.pkl is in an outdated format; it needs to be regenerated.")
+    return artefact
 
 
 @st.cache_data
@@ -325,12 +337,34 @@ if not artefacts_ready:
     st.error("Artefacts not found. Run `python train.py` from the project root first.")
     st.stop()
 
-model     = load_model()
+try:
+    artefact = load_model()
+except Exception as exc:
+    st.error(
+        "Could not load `artefacts/model.pkl`. This usually means the model was saved by "
+        "different library versions, is in an outdated format, or a native library "
+        "(OpenMP, needed by XGBoost) is missing. Run `python train.py`, then reload."
+    )
+    with st.expander("Error details"):
+        st.exception(exc)
+    st.stop()
+
+for lib, trained_with, running in (
+    ("scikit-learn", artefact["sklearn_version"], sklearn.__version__),
+    ("xgboost", artefact["xgboost_version"], xgb.__version__),
+):
+    if trained_with != running:
+        st.warning(
+            f"Model was trained with {lib} {trained_with}, but {lib} {running} is installed. "
+            "Predictions may be unreliable; retrain with `python train.py`."
+        )
+
+model     = artefact["model"]
+threshold = artefact["threshold"]
 saved     = load_metrics()
 df        = load_processed_df()
 metrics   = saved["model"]
 baseline  = saved["baseline"]
-threshold = metrics["threshold"]
 
 val_df      = df[df["Season"] == VAL_SEASON]
 X_val       = val_df[FEATURE_COLS]
