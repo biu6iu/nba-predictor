@@ -24,6 +24,3 @@ venv/
 # Derived outputs
 artefacts/*
 !artefacts/.gitkeep
-
-# data
-data/*
