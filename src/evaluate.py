@@ -9,8 +9,11 @@ from sklearn.metrics import (
     accuracy_score,
     brier_score_loss,
     confusion_matrix,
+    f1_score,
     log_loss,
     precision_recall_curve,
+    precision_score,
+    recall_score,
     roc_auc_score,
     roc_curve,
 )
@@ -34,6 +37,9 @@ def compute_metrics(y_true, y_pred_prob, threshold: float) -> dict:
     y_pred = (y_pred_prob >= threshold).astype(int)
     return {
         "accuracy":    round(accuracy_score(y_true, y_pred), 4),
+        "precision":   round(precision_score(y_true, y_pred, zero_division=0), 4),
+        "recall":      round(recall_score(y_true, y_pred, zero_division=0), 4),
+        "f1":          round(f1_score(y_true, y_pred, zero_division=0), 4),
         "log_loss":    round(log_loss(y_true, y_pred_prob), 4),
         "brier_score": round(brier_score_loss(y_true, y_pred_prob), 4),
         "roc_auc":     round(roc_auc_score(y_true, y_pred_prob), 4),
