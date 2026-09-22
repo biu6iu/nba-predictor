@@ -102,11 +102,6 @@ def train(df) -> tuple:
         shuffle=False,
     )
 
-    # Same settings as each xgb_cv fold, so the final fit picks its number of trees the same
-    # way tuning did. X_calib doubles as the early-stopping eval set: those rows decide *when*
-    # boosting stops, then separately inform Platt scaling below. That's a much lighter reuse
-    # than fitting tree weights on them directly, and keeps the fit set at its full 80% rather
-    # than carving out yet another split.
     model = xgb.XGBClassifier(
         **best_params,
         objective="binary:logistic",
