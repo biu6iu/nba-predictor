@@ -102,14 +102,22 @@ def train(df) -> tuple:
         shuffle=False,
     )
 
+    # Same settings as each xgb_cv fold, so the final fit picks its number of trees the same
+    # way tuning did. X_calib doubles as the early-stopping eval set: those rows decide *when*
+    # boosting stops, then separately inform Platt scaling below. That's a much lighter reuse
+    # than fitting tree weights on them directly, and keeps the fit set at its full 80% rather
+    # than carving out yet another split.
     model = xgb.XGBClassifier(
         **best_params,
         objective="binary:logistic",
         tree_method="hist",
+        eval_metric="logloss",
+        early_stopping_rounds=50,
+        max_delta_step=1,
         n_jobs=-1,
         random_state=42,
     )
-    model.fit(X_fit, y_fit)
+    model.fit(X_fit, y_fit, eval_set=[(X_calib, y_calib)], verbose=False)
 
     # Platt scaling on the held-out later games, FrozenEstimator keeps the model as fitted
     calibrated_model = CalibratedClassifierCV(
