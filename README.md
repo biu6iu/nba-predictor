@@ -61,7 +61,7 @@ Games are split by season, never randomly, so the model is always tested on game
 | 2020-21 | Previous-season stats for 2021-22 games only |
 | 2021-22, 2022-23 | Training |
 | 2023-24 | Validation (threshold selection) |
-| 2024-25 | Held out |
+| 2024-25 | Test |
 
 ## Modelling notes
 
