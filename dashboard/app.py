@@ -584,7 +584,7 @@ with tab4:
 
     st.markdown("""
 **Feature groups:**
-- **diff_avg_pts / diff_win_pct / diff_pt_diff** — rolling season-to-date performance gap between home and visitor
+- **diff_avg_pts / diff_win_pct / diff_pt_diff_last10** — rolling season-to-date performance gap between home and visitor
 - **home_home_win_pct / visitor_away_win_pct** — venue-specific win rates (home teams tend to win more at home)
 - **diff_SRS / diff_[O|D|N]Rtg / diff_Pace** — previous-season overall team strength signals
 - **diff_TS% / diff_eFG% / ...** — previous-season offensive and defensive efficiency differentials
