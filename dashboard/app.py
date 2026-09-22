@@ -48,7 +48,10 @@ def load_model():
 @st.cache_data
 def load_metrics():
     with open(ARTEFACTS_DIR / "metrics.json") as f:
-        return json.load(f)
+        saved = json.load(f)
+    if not {"validation", "test"} <= set(saved):
+        raise ValueError("metrics.json is in an outdated format; it needs to be regenerated.")
+    return saved
 
 
 @st.cache_data
@@ -240,9 +243,9 @@ def _plotly_confusion(y_true, y_pred_prob, threshold: float) -> go.Figure:
     return fig
 
 
-def _plotly_calibration(calibrated_model, X_val, y_val) -> go.Figure:
+def _plotly_calibration(calibrated_model, X, y) -> go.Figure:
     prob_true, prob_pred = calibration_curve(
-        y_val, calibrated_model.predict_proba(X_val)[:, 1], n_bins=10
+        y, calibrated_model.predict_proba(X)[:, 1], n_bins=10
     )
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -339,10 +342,11 @@ if not artefacts_ready:
 
 try:
     artefact = load_model()
+    saved    = load_metrics()
 except Exception as exc:
     st.error(
-        "Could not load `artefacts/model.pkl`. This usually means the model was saved by "
-        "different library versions, is in an outdated format, or a native library "
+        "Could not load the training artefacts in `artefacts/`. This usually means they were "
+        "saved by different library versions, are in an outdated format, or a native library "
         "(OpenMP, needed by XGBoost) is missing. Run `python train.py`, then reload."
     )
     with st.expander("Error details"):
@@ -359,17 +363,17 @@ for lib, trained_with, running in (
             "Predictions may be unreliable; retrain with `python train.py`."
         )
 
-model     = artefact["model"]
-threshold = artefact["threshold"]
-saved     = load_metrics()
-df        = load_processed_df()
-metrics   = saved["model"]
-baseline  = saved["baseline"]
+model       = artefact["model"]
+threshold   = artefact["threshold"]
+df          = load_processed_df()
+metrics     = saved["test"]["model"]
+baseline    = saved["test"]["baseline"]
+val_metrics = saved["validation"]["model"]
 
-val_df      = df[df["Season"] == VAL_SEASON]
-X_val       = val_df[FEATURE_COLS]
-y_val       = val_df[TARGET_COL].astype(int)
-y_pred_prob = model.predict_proba(X_val)[:, 1]
+test_df     = df[df["Season"] == TEST_SEASON]
+X_test      = test_df[FEATURE_COLS]
+y_test      = test_df[TARGET_COL].astype(int)
+y_pred_prob = model.predict_proba(X_test)[:, 1]
 
 recent_df = df[df["Season"] == TEST_SEASON]
 all_teams = sorted(set(recent_df["Home"]) | set(recent_df["Visitor"]))
@@ -457,7 +461,10 @@ with tab1:
 
 with tab2:
     st.header("Model & Metrics")
-    st.caption(f"Validated on the held-out {VAL_SEASON} season")
+    st.caption(
+        f"Evaluated on the {TEST_SEASON} season, which was not used for training "
+        "or for choosing the threshold"
+    )
 
     st.divider()
 
@@ -479,6 +486,10 @@ with tab2:
         f"{metrics['brier_score']:.4f}",
         f"{baseline['brier_score'] - metrics['brier_score']:+.4f} vs baseline",
         delta_color="inverse",
+    )
+    st.caption(
+        f"For reference, accuracy on the {VAL_SEASON} validation season, where the threshold "
+        f"was chosen, was {val_metrics['accuracy']:.1%}."
     )
 
     st.divider()
@@ -514,32 +525,35 @@ with tab2:
 
 with tab3:
     st.header("Model Evaluation")
-    st.caption(f"All results on the held-out {VAL_SEASON} validation season")
+    st.caption(
+        f"All results on the {TEST_SEASON} test season "
+        f"(threshold chosen on the {VAL_SEASON} validation season)"
+    )
 
     row1_col1, row1_col2 = st.columns(2)
     row2_col1, row2_col2 = st.columns(2)
 
     with row1_col1:
         st.plotly_chart(
-            _plotly_roc(y_val, y_pred_prob),
+            _plotly_roc(y_test, y_pred_prob),
             use_container_width=True,
         )
 
     with row1_col2:
         st.plotly_chart(
-            _plotly_precision_recall(y_val, y_pred_prob, threshold),
+            _plotly_precision_recall(y_test, y_pred_prob, threshold),
             use_container_width=True,
         )
 
     with row2_col1:
         st.plotly_chart(
-            _plotly_confusion(y_val, y_pred_prob, threshold),
+            _plotly_confusion(y_test, y_pred_prob, threshold),
             use_container_width=True,
         )
 
     with row2_col2:
         st.plotly_chart(
-            _plotly_calibration(model, X_val, y_val),
+            _plotly_calibration(model, X_test, y_test),
             use_container_width=True,
         )
 

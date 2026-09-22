@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,11 +41,15 @@ def compute_metrics(y_true, y_pred_prob, threshold: float) -> dict:
     }
 
 
-def save_metrics(metrics: dict, baseline: dict, path: str) -> None:
-    """Write metrics and baseline to a JSON file for dashboard consumption."""
-    payload = {"model": metrics, "baseline": baseline}
+def save_metrics(results: dict, path: Path) -> None:
+    """
+    Write per-split metrics to a JSON file for dashboard consumption.
+
+    `results` maps a split name ("validation", "test") to
+    {"model": {...}, "baseline": {...}}.
+    """
     with open(path, "w") as f:
-        json.dump(payload, f, indent=2)
+        json.dump(results, f, indent=2)
 
 
 def plot_roc_curve(y_true, y_pred_prob) -> plt.Figure:
