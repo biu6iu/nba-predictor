@@ -24,6 +24,7 @@ from src.config import (
     FEATURE_COLS,
     MODEL_ARTEFACT_KEYS,
     TARGET_COL,
+    TARGET_PRECISION,
     TEST_SEASON,
     VAL_SEASON,
 )
@@ -490,6 +491,18 @@ with tab2:
     st.caption(
         f"For reference, accuracy on the {VAL_SEASON} validation season, where the threshold "
         f"was chosen, was {val_metrics['accuracy']:.1%}."
+    )
+
+    st.divider()
+
+    pcol1, pcol2, pcol3 = st.columns(3)
+    pcol1.metric("Precision", f"{metrics['precision']:.1%}")
+    pcol2.metric("Recall", f"{metrics['recall']:.1%}")
+    pcol3.metric("F1", f"{metrics['f1']:.3f}")
+    st.caption(
+        f"At this threshold, the model was tuned to target ≥{TARGET_PRECISION:.0%} "
+        f"precision on the validation season. The precision on the test season is "
+        f"{metrics['precision']:.1%}."
     )
 
     st.divider()
