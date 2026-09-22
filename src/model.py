@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime, timezone
 
 import joblib
@@ -120,9 +121,26 @@ def train(df) -> tuple:
     # Threshold optimisation on validation set: target precision >= TARGET_PRECISION, maximise recall
     y_pred_prob = calibrated_model.predict_proba(X_val)[:, 1]
     precision, recall, thresholds = precision_recall_curve(y_val, y_pred_prob)
+    precision, recall = precision[:-1], recall[:-1]  # drop the extra point precision_recall_curve appends
 
-    valid_idx = np.where(precision[:-1] >= TARGET_PRECISION)[0]
-    best_threshold = float(thresholds[valid_idx[np.argmax(recall[valid_idx])]])
+    valid_idx = np.where(precision >= TARGET_PRECISION)[0]
+    if valid_idx.size > 0:
+        best_threshold = float(thresholds[valid_idx[np.argmax(recall[valid_idx])]])
+    else:
+        # no threshold reaches TARGET_PRECISION so fall back to the threshold that maximises F1
+        f1 = np.divide(
+            2 * precision * recall, precision + recall,
+            out=np.zeros_like(precision), where=(precision + recall) > 0,
+        )
+        best_idx = int(np.argmax(f1))
+        best_threshold = float(thresholds[best_idx])
+        warnings.warn(
+            f"No threshold reached the target precision of {TARGET_PRECISION:.0%} on the "
+            f"validation set (best precision was {precision.max():.1%}). Falling back to the "
+            f"max-F1 threshold {best_threshold:.4f} (precision={precision[best_idx]:.1%}, "
+            f"recall={recall[best_idx]:.1%}).",
+            stacklevel=2,
+        )
 
     # Serialise the model together with everything needed to use and audit it
     artefact = {
