@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.config import ARTEFACTS_DIR, FEATURE_COLS, TARGET_COL, VAL_SEASON
+from src.config import ARTEFACTS_DIR, FEATURE_COLS, TARGET_COL, TEST_SEASON, VAL_SEASON
 from src.data_loader import load_match_data, load_team_stats
 from src.evaluate import (
     compute_baseline_metrics,
@@ -13,6 +13,25 @@ from src.evaluate import (
 )
 from src.model import train
 from src.preprocessor import build_features
+
+
+def evaluate_split(model, df, season, threshold):
+    """
+    score a model on one season
+    
+    returns its metrics (model + baseline), X, y and probabilities
+    """
+    split = df[df["Season"] == season]
+    X = split[FEATURE_COLS]
+    y = split[TARGET_COL].astype(int)
+    y_prob = model.predict_proba(X)[:, 1]
+
+    metrics = {
+        "model": compute_metrics(y, y_prob, threshold),
+        "baseline": compute_baseline_metrics(y),
+    }
+
+    return metrics, X, y, y_prob
 
 
 def main():
@@ -31,28 +50,26 @@ def main():
     # Train
     calibrated_model, best_threshold, best_params = train(df)
 
-    # Evaluate on validation season
-    val_df = df[df["Season"] == VAL_SEASON]
-    X_val  = val_df[FEATURE_COLS]
-    y_val  = val_df[TARGET_COL].astype(int)
+    # The threshold was chosen on the validation season, so its metrics are optimistic
+    # The test season was never used for any decision and gives the honest numbers
+    val_metrics, _, _, _ = evaluate_split(calibrated_model, df, VAL_SEASON, best_threshold)
+    test_metrics, X_test, y_test, y_test_prob = evaluate_split(calibrated_model, df, TEST_SEASON, best_threshold)
 
-    y_pred_prob = calibrated_model.predict_proba(X_val)[:, 1]
+    save_metrics(
+        {"validation": val_metrics, "test": test_metrics},
+        ARTEFACTS_DIR / "metrics.json",
+    )
 
-    metrics  = compute_metrics(y_val, y_pred_prob, best_threshold)
-    baseline = compute_baseline_metrics(y_val)
-
-    save_metrics(metrics, baseline, ARTEFACTS_DIR / "metrics.json")
-
-    plot_roc_curve(y_val, y_pred_prob).savefig(
+    plot_roc_curve(y_test, y_test_prob).savefig(
         ARTEFACTS_DIR / "roc_curve.png", bbox_inches="tight"
     )
-    plot_confusion_matrix(y_val, y_pred_prob, best_threshold).savefig(
+    plot_confusion_matrix(y_test, y_test_prob, best_threshold).savefig(
         ARTEFACTS_DIR / "confusion_matrix.png", bbox_inches="tight"
     )
-    plot_calibration(calibrated_model, X_val, y_val).savefig(
+    plot_calibration(calibrated_model, X_test, y_test).savefig(
         ARTEFACTS_DIR / "calibration.png", bbox_inches="tight"
     )
-    plot_precision_recall(y_val, y_pred_prob, best_threshold).savefig(
+    plot_precision_recall(y_test, y_test_prob, best_threshold).savefig(
         ARTEFACTS_DIR / "precision_recall.png", bbox_inches="tight"
     )
 
