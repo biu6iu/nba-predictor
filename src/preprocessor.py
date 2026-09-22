@@ -71,7 +71,7 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
         "avg_pts_scored", "avg_pts_allowed", "avg_pts_last5",
         "win_pct_last5", "win_pct_last10",
         "days_rest", "b2b", "home_win_pct_last10",
-        "pt_diff", "pt_diff_last10",
+        "pt_diff_last10",
     ]
 
     home_features = (
@@ -87,7 +87,6 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
             "days_rest":           "home_days_rest",
             "b2b":                 "home_b2b",
             "home_win_pct_last10": "home_home_win_pct_last10",
-            "pt_diff":             "home_pt_diff",
             "pt_diff_last10":      "home_pt_diff_last10",
         })
     )
@@ -105,7 +104,6 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
             "days_rest":           "visitor_days_rest",
             "b2b":                 "visitor_b2b",
             "home_win_pct_last10": "visitor_away_win_pct_last10",
-            "pt_diff":             "visitor_pt_diff",
             "pt_diff_last10":      "visitor_pt_diff_last10",
         })
     )
@@ -144,7 +142,6 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
     df["diff_win_pct_last5"]   = df["home_win_pct_last5"]   - df["visitor_win_pct_last5"]
     df["diff_win_pct_last10"]  = df["home_win_pct_last10"]  - df["visitor_win_pct_last10"]
     df["diff_days_rest"]       = df["home_days_rest"]       - df["visitor_days_rest"]
-    df["diff_pt_diff"]         = df["home_pt_diff"]         - df["visitor_pt_diff"]
     df["diff_pt_diff_last10"]  = df["home_pt_diff_last10"]  - df["visitor_pt_diff_last10"]
     df["diff_SRS"]             = df["home_SRS"]             - df["visitor_SRS"]
     df["diff_ORtg"]            = df["home_ORtg"]            - df["visitor_ORtg"]
