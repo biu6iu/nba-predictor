@@ -67,6 +67,7 @@ Games are split by season, never randomly, so the model is always tested on game
 
 - Hyperparameters are tuned with Bayesian optimisation, scored by log loss over time-ordered cross-validation folds.
 - Predicted probabilities are calibrated with Platt scaling.
+- Rolling-window features reset each season, so roughly a quarter of rows in every split have an early-season NaN feature. These are kept rather than dropped and handled by XGBoost's native missing-value support, since real predictions happen in early season too.
 - The win/loss threshold is chosen to reach at least 65% precision while maximising recall.
 - `artefacts/model.pkl` stores the model together with its threshold, tuned parameters, feature list and library versions. The dashboard warns if the installed versions differ.
 
