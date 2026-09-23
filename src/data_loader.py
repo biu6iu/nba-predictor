@@ -23,6 +23,17 @@ def load_team_stats() -> pd.DataFrame:
         advanced = pd.read_csv(DATA_DIR / f"{year}AdvData.csv")
 
         merged = pd.merge(per_game, advanced, on="Team")
+
+        # ensure no rows are silently dropped
+        if len(merged) != len(per_game) or len(merged) != len(advanced):
+            only_per_game = set(per_game["Team"]) - set(advanced["Team"])
+            only_advanced = set(advanced["Team"]) - set(per_game["Team"])
+            raise ValueError(
+                f"{season}: per-game and advanced team stats didn't merge cleanly on 'Team' "
+                f"({len(per_game)} per-game rows, {len(advanced)} advanced rows, "
+                f"{len(merged)} merged rows). Only in per-game: {sorted(only_per_game)}; "
+                f"only in advanced: {sorted(only_advanced)}."
+            )
         merged = merged.drop(columns=["G", "MP"])
         merged["season"] = season
         frames.append(merged)
