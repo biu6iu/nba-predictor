@@ -3,7 +3,6 @@ import sys
 from pathlib import Path
 
 import joblib
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import sklearn
@@ -30,6 +29,9 @@ from src.config import (
 )
 
 st.set_page_config(page_title="NBA Winner Predictor", layout="wide")
+
+# Note: use_container_width is deprecated from Streamlit 1.49 in favour of width="stretch" /
+# width="content". It is fine at the pinned 1.45.1; switch when bumping the pin.
 
 _BLUE  = "#4C72B0"
 _GREY  = "#D0D0D0"
