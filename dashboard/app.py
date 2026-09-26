@@ -376,7 +376,9 @@ X_test      = test_df[FEATURE_COLS]
 y_test      = test_df[TARGET_COL].astype(int)
 y_pred_prob = model.predict_proba(X_test)[:, 1]
 
-recent_df = df[df["Season"] == TEST_SEASON]
+# The season the Predict tab draws team form from, and advertises in its caption.
+PREDICT_SEASON = TEST_SEASON
+recent_df: pd.DataFrame = df[df["Season"] == PREDICT_SEASON]
 all_teams = sorted(set(recent_df["Home"]) | set(recent_df["Visitor"]))
 
 xgb_model   = model.calibrated_classifiers_[0].estimator
@@ -420,8 +422,8 @@ with tab1:
         if home_team == visitor_team:
             st.warning("Home and visitor team must be different.")
         else:
-            h = _get_team_as_home(df, home_team)
-            v = _get_team_as_visitor(df, visitor_team)
+            h = _get_team_as_home(recent_df, home_team)
+            v = _get_team_as_visitor(recent_df, visitor_team)
 
             if h is None:
                 st.error(f"No home-game data found for {home_team}.")
@@ -453,7 +455,7 @@ with tab1:
     st.divider()
 
     st.caption(
-        f"Team stats are drawn from their most recent games in the {TEST_SEASON} season. "
+        f"Team stats are drawn from their most recent games in the {PREDICT_SEASON} season. "
         "Rest days and back-to-back status are assumed equal for both sides."
     )
 
