@@ -68,13 +68,24 @@ Games are split by season, never randomly, so the model is always tested on game
 - Hyperparameters are tuned with Bayesian optimisation, scored by log loss over time-ordered cross-validation folds.
 - Predicted probabilities are calibrated with Platt scaling.
 - Rolling-window features reset each season, so roughly a quarter of rows in every split have an early-season NaN feature. These are kept rather than dropped and handled by XGBoost's native missing-value support, since real predictions happen in early season too.
-- The 2025-26 test season is partial (games through early February) rather than a full ~1,230-game season, since `data/matchData.csv` hasn't been re-scraped since then. Test metrics are still on genuinely unseen games, but come from a smaller, noisier sample than a full season would give.
 - The win/loss threshold is chosen to reach at least 65% precision while maximising recall.
 - `artefacts/model.pkl` stores the model together with its threshold, tuned parameters, feature list and library versions. The dashboard warns if the installed versions differ.
 
 ## Results
 
-Evaluation is being reworked and final numbers will be added here.
+Test numbers are from the 2025-26 season, which was never used for tuning, calibration or threshold selection. The baseline always predicts the majority class (home win) using that season's home-win rate.
+
+| Metric | Baseline | Model |
+|---|---|---|
+| Accuracy | 55.5% | 65.0% |
+| Log loss | 0.687 | 0.619 |
+| Brier score | 0.247 | 0.215 |
+| ROC-AUC | n/a | 0.712 |
+| Precision / recall | n/a | 65.6% / 77.5% |
+
+The model beats the baseline on every metric, by about 9.5 points of accuracy. The 65% precision target was met on both the 2024-25 validation season (65.0%, accuracy 65.5%) and the test season (65.6%, accuracy 65.0%), so the threshold chosen on validation carries over to unseen games.
+
+All metrics are written to `artefacts/metrics.json` by `make train`, so rerunning training after changing features or data will change these numbers.
 
 ## Development
 
