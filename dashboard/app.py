@@ -385,7 +385,7 @@ all_teams = sorted(set(recent_df["Home"]) | set(recent_df["Visitor"]))
 
 xgb_model   = model.calibrated_classifiers_[0].estimator
 importances = pd.Series(
-    xgb_model.feature_importances_, index=FEATURE_COLS
+    xgb_model.feature_importances_, index=[str(c) for c in xgb_model.feature_names_in_]
 ).sort_values()
 
 
