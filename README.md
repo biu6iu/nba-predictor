@@ -59,15 +59,16 @@ Games are split by season, never randomly, so the model is always tested on game
 | Season | Used for |
 |---|---|
 | 2020-21 | Previous-season stats for 2021-22 games only |
-| 2021-22, 2022-23 | Training |
-| 2023-24 | Validation (threshold selection) |
-| 2024-25 | Test |
+| 2021-22, 2022-23, 2023-24 | Training |
+| 2024-25 | Validation (threshold selection) |
+| 2025-26 | Test |
 
 ## Modelling notes
 
 - Hyperparameters are tuned with Bayesian optimisation, scored by log loss over time-ordered cross-validation folds.
 - Predicted probabilities are calibrated with Platt scaling.
 - Rolling-window features reset each season, so roughly a quarter of rows in every split have an early-season NaN feature. These are kept rather than dropped and handled by XGBoost's native missing-value support, since real predictions happen in early season too.
+- The 2025-26 test season is partial (games through early February) rather than a full ~1,230-game season, since `data/matchData.csv` hasn't been re-scraped since then. Test metrics are still on genuinely unseen games, but come from a smaller, noisier sample than a full season would give.
 - The win/loss threshold is chosen to reach at least 65% precision while maximising recall.
 - `artefacts/model.pkl` stores the model together with its threshold, tuned parameters, feature list and library versions. The dashboard warns if the installed versions differ.
 
