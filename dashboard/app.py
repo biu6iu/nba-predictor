@@ -378,7 +378,9 @@ y_pred_prob = model.predict_proba(X_test)[:, 1]
 
 # The season the Predict tab draws team form from, and advertises in its caption.
 PREDICT_SEASON = TEST_SEASON
-recent_df = df.loc[df["Season"] == PREDICT_SEASON]
+# Span of seasons with games in the data, e.g. "2021–2026" (labels look like "2021-2022")
+DATA_RANGE = f"{df['Season'].min()[:4]}–{df['Season'].max()[-4:]}"
+recent_df = df[df["Season"] == PREDICT_SEASON]
 all_teams = sorted(set(recent_df["Home"]) | set(recent_df["Visitor"]))
 
 xgb_model   = model.calibrated_classifiers_[0].estimator
@@ -397,7 +399,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Predict", "Model & Metrics", "Evaluation", "F
 with tab1:
     st.title("NBA Game Winner Predictor")
     st.caption(
-        f"stats sourced from Basketball Reference (2020–{TEST_SEASON[:4]})"
+        f"stats sourced from Basketball Reference ({DATA_RANGE})"
     )
 
     st.divider()
@@ -510,10 +512,10 @@ with tab2:
     st.divider()
 
     st.subheader("About the model")
-    st.markdown("""
+    st.markdown(f"""
         The model predicts whether the **home team wins** a given NBA regular-season game.
 
-        **Data:** Per-game and advanced team statistics from Basketball Reference (2020–2024 seasons),
+        **Data:** Per-game and advanced team statistics from Basketball Reference ({DATA_RANGE} seasons),
         combined with match-level results.
 
         **Pipeline:**
