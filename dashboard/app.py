@@ -244,10 +244,8 @@ def _plotly_confusion(y_true, y_pred_prob, threshold: float) -> go.Figure:
     return fig
 
 
-def _plotly_calibration(calibrated_model, X, y) -> go.Figure:
-    prob_true, prob_pred = calibration_curve(
-        y, calibrated_model.predict_proba(X)[:, 1], n_bins=10
-    )
+def _plotly_calibration(y_true, y_pred_prob) -> go.Figure:
+    prob_true, prob_pred = calibration_curve(y_true, y_pred_prob, n_bins=10)
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=[0, 1], y=[0, 1], mode="lines",
@@ -329,6 +327,34 @@ def _plotly_prob_bar(prob: float, home: str, visitor: str, threshold: float) -> 
     return fig
 
 
+# Evaluation figures (cached)
+
+@st.cache_data
+def build_evaluation_figures(_model, _df: pd.DataFrame, season: str, threshold: float) -> dict:
+    """Score `season` once and build every figure that depends on those scores.
+
+    `_model` and `_df` are excluded from Streamlit's cache key, so the key is just
+    (season, threshold); the cache lives until the server restarts, like `load_model`.
+    """
+    season_df   = _df[_df["Season"] == season]
+    X           = season_df[FEATURE_COLS]
+    y           = season_df[TARGET_COL].astype(int)
+    y_pred_prob = _model.predict_proba(X)[:, 1]
+
+    xgb_model   = _model.calibrated_classifiers_[0].estimator
+    importances = pd.Series(
+        xgb_model.feature_importances_, index=[str(c) for c in xgb_model.feature_names_in_]
+    ).sort_values()
+
+    return {
+        "roc":         _plotly_roc(y, y_pred_prob),
+        "pr":          _plotly_precision_recall(y, y_pred_prob, threshold),
+        "confusion":   _plotly_confusion(y, y_pred_prob, threshold),
+        "calibration": _plotly_calibration(y, y_pred_prob),
+        "importance":  _plotly_feature_importance(importances),
+    }
+
+
 # Load everything upfront
 
 artefacts_ready = (
@@ -371,10 +397,7 @@ metrics     = saved["test"]["model"]
 baseline    = saved["test"]["baseline"]
 val_metrics = saved["validation"]["model"]
 
-test_df     = df[df["Season"] == TEST_SEASON]
-X_test      = test_df[FEATURE_COLS]
-y_test      = test_df[TARGET_COL].astype(int)
-y_pred_prob = model.predict_proba(X_test)[:, 1]
+figures = build_evaluation_figures(model, df, TEST_SEASON, threshold)
 
 # The season the Predict tab draws team form from, and advertises in its caption.
 PREDICT_SEASON = TEST_SEASON
@@ -382,11 +405,6 @@ PREDICT_SEASON = TEST_SEASON
 DATA_RANGE = f"{df['Season'].min()[:4]}–{df['Season'].max()[-4:]}"
 recent_df = df[df["Season"] == PREDICT_SEASON]
 all_teams = sorted(set(recent_df["Home"]) | set(recent_df["Visitor"]))
-
-xgb_model   = model.calibrated_classifiers_[0].estimator
-importances = pd.Series(
-    xgb_model.feature_importances_, index=[str(c) for c in xgb_model.feature_names_in_]
-).sort_values()
 
 
 # Tabs
@@ -551,28 +569,16 @@ with tab3:
     row2_col1, row2_col2 = st.columns(2)
 
     with row1_col1:
-        st.plotly_chart(
-            _plotly_roc(y_test, y_pred_prob),
-            use_container_width=True,
-        )
+        st.plotly_chart(figures["roc"], use_container_width=True)
 
     with row1_col2:
-        st.plotly_chart(
-            _plotly_precision_recall(y_test, y_pred_prob, threshold),
-            use_container_width=True,
-        )
+        st.plotly_chart(figures["pr"], use_container_width=True)
 
     with row2_col1:
-        st.plotly_chart(
-            _plotly_confusion(y_test, y_pred_prob, threshold),
-            use_container_width=True,
-        )
+        st.plotly_chart(figures["confusion"], use_container_width=True)
 
     with row2_col2:
-        st.plotly_chart(
-            _plotly_calibration(model, X_test, y_test),
-            use_container_width=True,
-        )
+        st.plotly_chart(figures["calibration"], use_container_width=True)
 
 
 # Tab 4 — Feature Importance
@@ -581,10 +587,7 @@ with tab4:
     st.header("Feature Importance")
     st.caption("Gain-based importance from the underlying XGBoost classifier")
 
-    st.plotly_chart(
-        _plotly_feature_importance(importances),
-        use_container_width=True,
-    )
+    st.plotly_chart(figures["importance"], use_container_width=True)
 
     st.markdown("""
 **Feature groups:**
