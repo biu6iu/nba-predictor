@@ -298,7 +298,7 @@ def _plotly_prob_bar(prob: float, home: str, visitor: str, threshold: float) -> 
         marker_color=_BLUE,
         name=home,
         width=0.4,
-        hovertemplate=f"{home}: {{x:.1%}}<extra></extra>",
+        hovertemplate=f"{home}: %{{x:.1%}}<extra></extra>",
     ))
     fig.add_trace(go.Bar(
         x=[1 - prob], y=[""],
@@ -306,7 +306,7 @@ def _plotly_prob_bar(prob: float, home: str, visitor: str, threshold: float) -> 
         marker_color=_GREY,
         name=visitor,
         width=0.4,
-        hovertemplate=f"{visitor}: {{x:.1%}}<extra></extra>",
+        hovertemplate=f"{visitor}: %{{x:.1%}}<extra></extra>",
     ))
     fig.add_vline(
         x=0.5, line_dash="dot", line_color="black", line_width=1,
@@ -366,7 +366,7 @@ for lib, trained_with, running in (
 
 model       = artefact["model"]
 threshold   = artefact["threshold"]
-df          = load_processed_df()
+df: pd.DataFrame = load_processed_df()
 metrics     = saved["test"]["model"]
 baseline    = saved["test"]["baseline"]
 val_metrics = saved["validation"]["model"]
@@ -378,7 +378,7 @@ y_pred_prob = model.predict_proba(X_test)[:, 1]
 
 # The season the Predict tab draws team form from, and advertises in its caption.
 PREDICT_SEASON = TEST_SEASON
-recent_df: pd.DataFrame = df[df["Season"] == PREDICT_SEASON]
+recent_df = df.loc[df["Season"] == PREDICT_SEASON]
 all_teams = sorted(set(recent_df["Home"]) | set(recent_df["Visitor"]))
 
 xgb_model   = model.calibrated_classifiers_[0].estimator
