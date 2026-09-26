@@ -124,6 +124,21 @@ def _get_team_as_visitor(df: pd.DataFrame, team: str) -> dict | None:
     }
 
 
+def _missing_stats_message(home: str, h: dict, visitor: str, v: dict) -> str | None:
+    """Explain which stats are absent (None) or NaN in the two lookups, or return None if complete."""
+    parts = []
+    for team, role, stats in ((home, "home", h), (visitor, "visitor", v)):
+        gaps = [k for k, val in stats.items() if val is None or pd.isna(val)]
+        if gaps:
+            parts.append(f"{team} ({role}): {', '.join(gaps)}")
+    if not parts:
+        return None
+    return (
+        "Can't predict this game: some stats are missing from the latest game rows "
+        "(early in a season, rolling averages can be empty). Missing: " + "; ".join(parts)
+    )
+
+
 def _build_feature_vector(h: dict, v: dict) -> pd.DataFrame:
     home_form    = h["win_pct_last5"] - h["win_pct_last10"]
     visitor_form = v["win_pct_last5"] - v["win_pct_last10"]
@@ -449,6 +464,8 @@ with tab1:
                 st.error(f"No home-game data found for {home_team}.")
             elif v is None:
                 st.error(f"No away-game data found for {visitor_team}.")
+            elif problem := _missing_stats_message(home_team, h, visitor_team, v):
+                st.error(problem)
             else:
                 X_pred   = _build_feature_vector(h, v)
                 prob     = float(model.predict_proba(X_pred)[0, 1])
