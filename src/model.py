@@ -107,7 +107,10 @@ def train(df) -> tuple:
     best_params = optimizer.max["params"]
     best_params["max_depth"]    = int(round(best_params["max_depth"]))
     best_params["n_estimators"] = int(round(best_params["n_estimators"]))
-    logger.info("Best params: %s", best_params)
+    logger.info(
+        "Best params: %s",
+        {k: round(float(v), 4) if isinstance(v, float) else v for k, v in best_params.items()},
+    )
 
     # fit model on 80% of the data, with 20% going to calibration
     X_fit, X_calib, y_fit, y_calib = train_test_split(
