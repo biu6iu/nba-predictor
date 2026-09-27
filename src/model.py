@@ -17,8 +17,10 @@ from src.config import (
     BAYES_OPT_N_ITER,
     BAYES_OPT_PBOUNDS,
     CALIBRATION_TEST_SIZE,
+    EARLY_STOPPING_ROUNDS,
     FEATURE_COLS,
     MODEL_ARTEFACT_KEYS,
+    RANDOM_STATE,
     TARGET_COL,
     TARGET_PRECISION,
     TEST_SEASON,
@@ -69,9 +71,9 @@ def train(df) -> tuple:
             objective="binary:logistic",
             tree_method="hist",
             eval_metric="logloss",
-            early_stopping_rounds=50,
+            early_stopping_rounds=EARLY_STOPPING_ROUNDS,
             n_jobs=-1,
-            random_state=42,
+            random_state=RANDOM_STATE,
             verbosity=0,
         )
         scores = []
@@ -87,7 +89,7 @@ def train(df) -> tuple:
         f=xgb_cv,
         pbounds=BAYES_OPT_PBOUNDS,
         allow_duplicate_points=True,
-        random_state=42,
+        random_state=RANDOM_STATE,
         verbose=2,
     )
     optimizer.maximize(init_points=BAYES_OPT_INIT_POINTS, n_iter=BAYES_OPT_N_ITER)
@@ -108,10 +110,10 @@ def train(df) -> tuple:
         objective="binary:logistic",
         tree_method="hist",
         eval_metric="logloss",
-        early_stopping_rounds=50,
+        early_stopping_rounds=EARLY_STOPPING_ROUNDS,
         max_delta_step=1,
         n_jobs=-1,
-        random_state=42,
+        random_state=RANDOM_STATE,
     )
     model.fit(X_fit, y_fit, eval_set=[(X_calib, y_calib)], verbose=False)
 

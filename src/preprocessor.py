@@ -1,5 +1,7 @@
 import pandas as pd
 
+from src.config import ROLLING_WINDOW_LONG, ROLLING_WINDOW_SHORT, SEASON_START_MONTH
+
 
 def _prev_season(season_str: str) -> str:
     start, end = season_str.split("-")
@@ -52,7 +54,7 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
     # Parse dates and derive season labels
     df["Date"] = pd.to_datetime(df["Date"], format="%a %b %d %Y")
     df["Season"] = df["Date"].apply(
-        lambda d: f"{d.year}-{d.year + 1}" if d.month >= 10 else f"{d.year - 1}-{d.year}"
+        lambda d: f"{d.year}-{d.year + 1}" if d.month >= SEASON_START_MONTH else f"{d.year - 1}-{d.year}"
     )
     df["totalPTS"] = df["visitorPTS"] + df["homePTS"]
 
@@ -79,25 +81,25 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
         lambda x: x.shift().expanding().mean()
     )
     team_games["avg_pts_last5"] = grp["PTS_scored"].transform(
-        lambda x: x.shift().rolling(5).mean()
+        lambda x: x.shift().rolling(ROLLING_WINDOW_SHORT).mean()
     )
     team_games["win_pct_last5"] = grp["Win"].transform(
-        lambda x: x.shift().rolling(5).mean()
+        lambda x: x.shift().rolling(ROLLING_WINDOW_SHORT).mean()
     )
     team_games["win_pct_last10"] = grp["Win"].transform(
-        lambda x: x.shift().rolling(10).mean()
+        lambda x: x.shift().rolling(ROLLING_WINDOW_LONG).mean()
     )
     team_games["days_rest"] = grp["Date"].diff().dt.days
     team_games["b2b"] = (team_games["days_rest"] == 1).astype(int)
 
     team_games["home_win_pct_last10"] = (
         team_games.groupby(["Season", "Team", "is_home"])["Win"]
-        .transform(lambda x: x.shift().rolling(10).mean())
+        .transform(lambda x: x.shift().rolling(ROLLING_WINDOW_LONG).mean())
     )
 
     team_games["pt_diff"] = team_games["PTS_scored"] - team_games["PTS_allowed"]
     team_games["pt_diff_last10"] = grp["pt_diff"].transform(
-        lambda x: x.shift().rolling(10).mean()
+        lambda x: x.shift().rolling(ROLLING_WINDOW_LONG).mean()
     )
 
     # Pivot back to match level: separate home and away feature tables

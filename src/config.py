@@ -8,6 +8,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 ARTEFACTS_DIR = PROJECT_ROOT / "artefacts"
 
+# Reproducibility
+
+RANDOM_STATE = 42
+
 # Seasons
 
 SEASONS = [
@@ -22,6 +26,9 @@ TRAIN_SEASONS = ["2021-2022", "2022-2023", "2023-2024"]
 VAL_SEASON = "2024-2025"
 TEST_SEASON = "2025-2026"
 
+# NBA season year rolls over in October (e.g. a game in Oct 2024 is the "2024-2025" season)
+SEASON_START_MONTH = 10
+
 
 def split_by_season(df: pd.DataFrame, season: str) -> pd.DataFrame:
     """Return the rows of `df` belonging to a single season."""
@@ -31,6 +38,11 @@ def split_by_season(df: pd.DataFrame, season: str) -> pd.DataFrame:
 # Modelling target
 
 TARGET_COL = "Win"
+
+# Rolling window sizes for team-form features (games)
+
+ROLLING_WINDOW_SHORT = 5
+ROLLING_WINDOW_LONG = 10
 
 # Feature list  (28 features, ordered by semantic group)
 
@@ -100,6 +112,11 @@ BAYES_OPT_N_ITER = 60
 TSCV_N_SPLITS = 5
 CALIBRATION_TEST_SIZE = 0.2
 TARGET_PRECISION = 0.65
+EARLY_STOPPING_ROUNDS = 50
+
+# Calibration curve settings (dashboard and saved evaluation plots)
+
+CALIBRATION_N_BINS = 10
 
 # Keys stored in artefacts/model.pkl (written by src/model.py, read by the dashboard)
 

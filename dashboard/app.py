@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config import (
     ARTEFACTS_DIR,
+    CALIBRATION_N_BINS,
     FEATURE_COLS,
     MODEL_ARTEFACT_KEYS,
     TARGET_COL,
@@ -281,7 +282,7 @@ def _plotly_confusion(y_true, y_pred_prob, threshold: float) -> go.Figure:
 
 
 def _plotly_calibration(y_true, y_pred_prob) -> go.Figure:
-    prob_true, prob_pred = calibration_curve(y_true, y_pred_prob, n_bins=10)
+    prob_true, prob_pred = calibration_curve(y_true, y_pred_prob, n_bins=CALIBRATION_N_BINS)
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=[0, 1], y=[0, 1], mode="lines",

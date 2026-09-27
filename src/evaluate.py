@@ -18,6 +18,8 @@ from sklearn.metrics import (
     roc_curve,
 )
 
+from src.config import CALIBRATION_N_BINS
+
 
 def compute_baseline_metrics(y_true) -> dict:
     """Majority-class baseline: always predict the more frequent class."""
@@ -90,7 +92,7 @@ def plot_confusion_matrix(y_true, y_pred_prob, threshold: float) -> plt.Figure:
 def plot_calibration(calibrated_model, X_val, y_val) -> plt.Figure:
     fig, ax = plt.subplots()
     CalibrationDisplay.from_estimator(
-        calibrated_model, X_val, y_val, n_bins=10, ax=ax
+        calibrated_model, X_val, y_val, n_bins=CALIBRATION_N_BINS, ax=ax
     )
     ax.set_title("Calibration Curve")
     return fig
