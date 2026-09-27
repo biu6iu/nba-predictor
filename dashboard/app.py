@@ -27,6 +27,7 @@ from src.config import (
     TEST_SEASON,
     VAL_SEASON,
 )
+from src.preprocessor import build_differential_features
 
 st.set_page_config(page_title="NBA Winner Predictor", layout="wide")
 
@@ -142,39 +143,60 @@ def _missing_stats_message(home: str, h: dict, visitor: str, v: dict) -> str | N
 
 
 def _build_feature_vector(h: dict, v: dict) -> pd.DataFrame:
-    home_form    = h["win_pct_last5"] - h["win_pct_last10"]
-    visitor_form = v["win_pct_last5"] - v["win_pct_last10"]
-    row = {
-        "diff_avg_pts_scored":         h["avg_pts_scored"]  - v["avg_pts_scored"],
-        "diff_avg_pts_allowed":        h["avg_pts_allowed"] - v["avg_pts_allowed"],
-        "diff_avg_pts_last5":          h["avg_pts_last5"]   - v["avg_pts_last5"],
-        "diff_win_pct_last5":          h["win_pct_last5"]   - v["win_pct_last5"],
-        "diff_win_pct_last10":         h["win_pct_last10"]  - v["win_pct_last10"],
-        "diff_pt_diff_last10":         h["pt_diff_last10"]  - v["pt_diff_last10"],
-        "diff_days_rest":              0,
-        "home_home_win_pct_last10":    h["home_win_pct_last10"],
-        "visitor_away_win_pct_last10": v["away_win_pct_last10"],
-        "home_b2b":                    0,
-        "visitor_b2b":                 0,
-        "diff_SRS":    h["SRS"]    - v["SRS"],
-        "diff_ORtg":   h["ORtg"]   - v["ORtg"],
-        "diff_DRtg":   h["DRtg"]   - v["DRtg"],
-        "diff_NRtg":   h["NRtg"]   - v["NRtg"],
-        "diff_Pace":   h["Pace"]   - v["Pace"],
-        "diff_TS%":    h["TS%"]    - v["TS%"],
-        "diff_eFG%":   h["eFG%"]   - v["eFG%"],
-        "diff_TOV%":   h["TOV%"]   - v["TOV%"],
-        "diff_ORB%":   h["ORB%"]   - v["ORB%"],
-        "diff_FTr":    h["FTr"]    - v["FTr"],
-        "diff_3PAr":   h["3PAr"]   - v["3PAr"],
-        "diff_D_eFG%": h["D_eFG%"] - v["D_eFG%"],
-        "diff_D_TOV%": h["D_TOV%"] - v["D_TOV%"],
-        "diff_D_DRB%": h["D_DRB%"] - v["D_DRB%"],
-        "home_form":    home_form,
-        "visitor_form": visitor_form,
-        "diff_form":    home_form - visitor_form,
-    }
-    return pd.DataFrame([row])[FEATURE_COLS]
+    """Assemble the single-row, home_/visitor_-prefixed input build_differential_features
+    expects, then attach the venue/schedule features it doesn't compute."""
+    row = pd.DataFrame([{
+        "home_avg_pts_scored":     h["avg_pts_scored"],
+        "home_avg_pts_allowed":    h["avg_pts_allowed"],
+        "home_avg_pts_last5":      h["avg_pts_last5"],
+        "home_win_pct_last5":      h["win_pct_last5"],
+        "home_win_pct_last10":     h["win_pct_last10"],
+        "home_days_rest":          0,
+        "home_pt_diff_last10":     h["pt_diff_last10"],
+        "home_SRS":    h["SRS"],
+        "home_ORtg":   h["ORtg"],
+        "home_DRtg":   h["DRtg"],
+        "home_NRtg":   h["NRtg"],
+        "home_Pace":   h["Pace"],
+        "home_TS%":    h["TS%"],
+        "home_eFG%":   h["eFG%"],
+        "home_TOV%":   h["TOV%"],
+        "home_ORB%":   h["ORB%"],
+        "home_FTr":    h["FTr"],
+        "home_3PAr":   h["3PAr"],
+        "home_D_eFG%": h["D_eFG%"],
+        "home_D_TOV%": h["D_TOV%"],
+        "home_D_DRB%": h["D_DRB%"],
+        "visitor_avg_pts_scored":  v["avg_pts_scored"],
+        "visitor_avg_pts_allowed": v["avg_pts_allowed"],
+        "visitor_avg_pts_last5":   v["avg_pts_last5"],
+        "visitor_win_pct_last5":   v["win_pct_last5"],
+        "visitor_win_pct_last10":  v["win_pct_last10"],
+        "visitor_days_rest":       0,
+        "visitor_pt_diff_last10":  v["pt_diff_last10"],
+        "visitor_SRS":    v["SRS"],
+        "visitor_ORtg":   v["ORtg"],
+        "visitor_DRtg":   v["DRtg"],
+        "visitor_NRtg":   v["NRtg"],
+        "visitor_Pace":   v["Pace"],
+        "visitor_TS%":    v["TS%"],
+        "visitor_eFG%":   v["eFG%"],
+        "visitor_TOV%":   v["TOV%"],
+        "visitor_ORB%":   v["ORB%"],
+        "visitor_FTr":    v["FTr"],
+        "visitor_3PAr":   v["3PAr"],
+        "visitor_D_eFG%": v["D_eFG%"],
+        "visitor_D_TOV%": v["D_TOV%"],
+        "visitor_D_DRB%": v["D_DRB%"],
+    }])
+
+    row = build_differential_features(row)
+    row["home_home_win_pct_last10"]    = h["home_win_pct_last10"]
+    row["visitor_away_win_pct_last10"] = v["away_win_pct_last10"]
+    row["home_b2b"]    = 0
+    row["visitor_b2b"] = 0
+
+    return row[FEATURE_COLS]
 
 
 # Plotly chart helpers
