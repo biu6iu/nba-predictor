@@ -38,7 +38,6 @@ The dashboard reads from `artefacts/`, so run the training step first.
 | `src/evaluate.py` | Metrics and plots |
 | `train.py` | Runs the whole pipeline and writes `artefacts/` |
 | `dashboard/app.py` | Streamlit app |
-| `model.ipynb` | OG notebook which this project started off as |
 
 ## Features
 
