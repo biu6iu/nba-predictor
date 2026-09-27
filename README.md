@@ -19,6 +19,7 @@ make dashboard   # open the dashboard at http://localhost:8501
 ```bash
 conda env create -f environment.yml
 conda activate nba-predictor
+pip install -e .
 python train.py
 streamlit run dashboard/app.py
 ```
@@ -89,8 +90,10 @@ All metrics are written to `artefacts/metrics.json` by `make train`, so rerunnin
 
 ## Development
 
+`make setup` installs the dev tools (pytest, ruff, mypy) via the project's `dev` extra. To do it manually:
+
 ```bash
 conda activate nba-predictor
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 make lint
 ```

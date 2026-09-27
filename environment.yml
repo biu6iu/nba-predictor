@@ -4,9 +4,4 @@ channels:
 dependencies:
   - python=3.11
   - pip
-  # OpenMP runtime that XGBoost's native library dlopen()s on macOS/Linux.
-  # Without it, `import xgboost` (and unpickling model.pkl) fails.
   - llvm-openmp
-  - pip:
-      # Single source of truth for Python package versions.
-      - -r requirements.txt
