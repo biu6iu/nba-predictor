@@ -26,11 +26,10 @@ from src.config import (
     TARGET_PRECISION,
     TEST_SEASON,
     VAL_SEASON,
+    split_by_season,
 )
 from src.preprocessor import build_differential_features
 
-# Note: use_container_width is deprecated from Streamlit 1.49 in favour of width="stretch" /
-# width="content". It is fine at the pinned 1.45.1; switch when bumping the pin.
 
 _BLUE  = "#4C72B0"
 _GREY  = "#D0D0D0"
@@ -373,7 +372,7 @@ def build_evaluation_figures(_model, _df: pd.DataFrame, season: str, threshold: 
     `_model` and `_df` are excluded from Streamlit's cache key, so the key is just
     (season, threshold); the cache lives until the server restarts, like `load_model`.
     """
-    season_df   = _df[_df["Season"] == season]
+    season_df   = split_by_season(_df, season)
     X           = season_df[FEATURE_COLS]
     y           = season_df[TARGET_COL].astype(int)
     y_pred_prob = _model.predict_proba(X)[:, 1]
@@ -628,7 +627,7 @@ def main() -> None:
     predict_season = TEST_SEASON
     # Span of seasons with games in the data, e.g. "2021–2026" (labels look like "2021-2022")
     data_range = f"{df['Season'].min()[:4]}–{df['Season'].max()[-4:]}"
-    recent_df = df[df["Season"] == predict_season]
+    recent_df = split_by_season(df, predict_season)
     all_teams = sorted(set(recent_df["Home"]) | set(recent_df["Visitor"]))
 
     tab1, tab2, tab3, tab4 = st.tabs(["Predict", "Model & Metrics", "Evaluation", "Feature Importance"])

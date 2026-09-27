@@ -25,6 +25,7 @@ from src.config import (
     TRAIN_SEASONS,
     TSCV_N_SPLITS,
     VAL_SEASON,
+    split_by_season,
 )
 
 
@@ -40,7 +41,7 @@ def train(df) -> tuple:
     """
     # Train / val split
     train_df = df[df["Season"].isin(TRAIN_SEASONS)]
-    val_df   = df[df["Season"] == VAL_SEASON]
+    val_df   = split_by_season(df, VAL_SEASON)
 
     X_train = train_df[FEATURE_COLS]
     y_train = train_df[TARGET_COL].astype(int)

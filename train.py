@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.config import ARTEFACTS_DIR, FEATURE_COLS, TARGET_COL, TEST_SEASON, VAL_SEASON
+from src.config import ARTEFACTS_DIR, FEATURE_COLS, TARGET_COL, TEST_SEASON, VAL_SEASON, split_by_season
 from src.data_loader import load_match_data, load_team_stats
 from src.evaluate import (
     compute_baseline_metrics,
@@ -21,7 +21,7 @@ def evaluate_split(model, df, season, threshold):
     
     returns its metrics (model + baseline), X, y and probabilities
     """
-    split = df[df["Season"] == season]
+    split = split_by_season(df, season)
     X = split[FEATURE_COLS]
     y = split[TARGET_COL].astype(int)
     y_prob = model.predict_proba(X)[:, 1]

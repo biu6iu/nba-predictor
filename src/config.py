@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pandas as pd
+
 # Paths
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -19,6 +21,12 @@ SEASONS = [
 TRAIN_SEASONS = ["2021-2022", "2022-2023", "2023-2024"]
 VAL_SEASON = "2024-2025"
 TEST_SEASON = "2025-2026"
+
+
+def split_by_season(df: pd.DataFrame, season: str) -> pd.DataFrame:
+    """Return the rows of `df` belonging to a single season."""
+    return df[df["Season"] == season]
+
 
 # Modelling target
 
