@@ -6,6 +6,40 @@ def _prev_season(season_str: str) -> str:
     return f"{int(start) - 1}-{int(end) - 1}"
 
 
+def build_differential_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    compute home-minus-visitor differential features from home_/visitor_ columns
+    """
+    df = df.copy()
+
+    df["diff_avg_pts_scored"]  = df["home_avg_pts_scored"]  - df["visitor_avg_pts_scored"]
+    df["diff_avg_pts_allowed"] = df["home_avg_pts_allowed"] - df["visitor_avg_pts_allowed"]
+    df["diff_avg_pts_last5"]   = df["home_avg_pts_last5"]   - df["visitor_avg_pts_last5"]
+    df["diff_win_pct_last5"]   = df["home_win_pct_last5"]   - df["visitor_win_pct_last5"]
+    df["diff_win_pct_last10"]  = df["home_win_pct_last10"]  - df["visitor_win_pct_last10"]
+    df["diff_days_rest"]       = df["home_days_rest"]       - df["visitor_days_rest"]
+    df["diff_pt_diff_last10"]  = df["home_pt_diff_last10"]  - df["visitor_pt_diff_last10"]
+    df["diff_SRS"]             = df["home_SRS"]             - df["visitor_SRS"]
+    df["diff_ORtg"]            = df["home_ORtg"]            - df["visitor_ORtg"]
+    df["diff_DRtg"]            = df["home_DRtg"]            - df["visitor_DRtg"]
+    df["diff_NRtg"]            = df["home_NRtg"]            - df["visitor_NRtg"]
+    df["diff_Pace"]            = df["home_Pace"]            - df["visitor_Pace"]
+    df["diff_TS%"]             = df["home_TS%"]             - df["visitor_TS%"]
+    df["diff_eFG%"]            = df["home_eFG%"]            - df["visitor_eFG%"]
+    df["diff_TOV%"]            = df["home_TOV%"]            - df["visitor_TOV%"]
+    df["diff_ORB%"]            = df["home_ORB%"]            - df["visitor_ORB%"]
+    df["diff_FTr"]             = df["home_FTr"]             - df["visitor_FTr"]
+    df["diff_3PAr"]            = df["home_3PAr"]            - df["visitor_3PAr"]
+    df["diff_D_eFG%"]          = df["home_D_eFG%"]          - df["visitor_D_eFG%"]
+    df["diff_D_TOV%"]          = df["home_D_TOV%"]          - df["visitor_D_TOV%"]
+    df["diff_D_DRB%"]          = df["home_D_DRB%"]          - df["visitor_D_DRB%"]
+    df["home_form"]            = df["home_win_pct_last5"]   - df["home_win_pct_last10"]
+    df["visitor_form"]         = df["visitor_win_pct_last5"] - df["visitor_win_pct_last10"]
+    df["diff_form"]            = df["home_form"]            - df["visitor_form"]
+
+    return df
+
+
 def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.DataFrame:
     """
     Transform raw match and team-stats DataFrames into a model-ready DataFrame.
@@ -136,31 +170,6 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
     df = df.sort_values("Date").reset_index(drop=True)
     df["Win"] = df["homePTS"] > df["visitorPTS"]
 
-    df["diff_avg_pts_scored"]  = df["home_avg_pts_scored"]  - df["visitor_avg_pts_scored"]
-    df["diff_avg_pts_allowed"] = df["home_avg_pts_allowed"] - df["visitor_avg_pts_allowed"]
-    df["diff_avg_pts_last5"]   = df["home_avg_pts_last5"]   - df["visitor_avg_pts_last5"]
-    df["diff_win_pct_last5"]   = df["home_win_pct_last5"]   - df["visitor_win_pct_last5"]
-    df["diff_win_pct_last10"]  = df["home_win_pct_last10"]  - df["visitor_win_pct_last10"]
-    df["diff_days_rest"]       = df["home_days_rest"]       - df["visitor_days_rest"]
-    df["diff_pt_diff_last10"]  = df["home_pt_diff_last10"]  - df["visitor_pt_diff_last10"]
-    df["diff_SRS"]             = df["home_SRS"]             - df["visitor_SRS"]
-    df["diff_ORtg"]            = df["home_ORtg"]            - df["visitor_ORtg"]
-    df["diff_DRtg"]            = df["home_DRtg"]            - df["visitor_DRtg"]
-    df["diff_NRtg"]            = df["home_NRtg"]            - df["visitor_NRtg"]
-    df["diff_Pace"]            = df["home_Pace"]            - df["visitor_Pace"]
-    df["diff_TS%"]             = df["home_TS%"]             - df["visitor_TS%"]
-    df["diff_eFG%"]            = df["home_eFG%"]            - df["visitor_eFG%"]
-    df["diff_TOV%"]            = df["home_TOV%"]            - df["visitor_TOV%"]
-    df["diff_ORB%"]            = df["home_ORB%"]            - df["visitor_ORB%"]
-    df["diff_FTr"]             = df["home_FTr"]             - df["visitor_FTr"]
-    df["diff_3PAr"]            = df["home_3PAr"]            - df["visitor_3PAr"]
-    df["diff_FT_FGA"]          = df["home_FT/FGA"]          - df["visitor_FT/FGA"]
-    df["diff_D_eFG%"]          = df["home_D_eFG%"]          - df["visitor_D_eFG%"]
-    df["diff_D_TOV%"]          = df["home_D_TOV%"]          - df["visitor_D_TOV%"]
-    df["diff_D_DRB%"]          = df["home_D_DRB%"]          - df["visitor_D_DRB%"]
-    df["diff_D_FT_FGA"]        = df["home_D_FT/FGA"]        - df["visitor_D_FT/FGA"]
-    df["home_form"]            = df["home_win_pct_last5"]   - df["home_win_pct_last10"]
-    df["visitor_form"]         = df["visitor_win_pct_last5"] - df["visitor_win_pct_last10"]
-    df["diff_form"]            = df["home_form"]            - df["visitor_form"]
+    df = build_differential_features(df)
 
     return df
