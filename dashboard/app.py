@@ -29,8 +29,6 @@ from src.config import (
 )
 from src.preprocessor import build_differential_features
 
-st.set_page_config(page_title="NBA Winner Predictor", layout="wide")
-
 # Note: use_container_width is deprecated from Streamlit 1.49 in favour of width="stretch" /
 # width="content". It is fine at the pinned 1.45.1; switch when bumping the pin.
 
@@ -394,247 +392,251 @@ def build_evaluation_figures(_model, _df: pd.DataFrame, season: str, threshold: 
     }
 
 
-# Load everything upfront
+# Tab renderers
 
-artefacts_ready = (
-    (ARTEFACTS_DIR / "model.pkl").exists()
-    and (ARTEFACTS_DIR / "metrics.json").exists()
-    and (ARTEFACTS_DIR / "processed_df.parquet").exists()
-)
-
-if not artefacts_ready:
-    st.error("Artefacts not found. Run `python train.py` from the project root first.")
-    st.stop()
-
-try:
-    artefact = load_model()
-    saved    = load_metrics()
-except Exception as exc:
-    st.error(
-        "Could not load the training artefacts in `artefacts/`. This usually means they were "
-        "saved by different library versions, are in an outdated format, or a native library "
-        "(OpenMP, needed by XGBoost) is missing. Run `python train.py`, then reload."
-    )
-    with st.expander("Error details"):
-        st.exception(exc)
-    st.stop()
-
-for lib, trained_with, running in (
-    ("scikit-learn", artefact["sklearn_version"], sklearn.__version__),
-    ("xgboost", artefact["xgboost_version"], xgb.__version__),
-):
-    if trained_with != running:
-        st.warning(
-            f"Model was trained with {lib} {trained_with}, but {lib} {running} is installed. "
-            "Predictions may be unreliable; retrain with `python train.py`."
+def render_predictor(
+    tab, model, threshold, recent_df: pd.DataFrame, all_teams: list, predict_season: str, data_range: str
+) -> None:
+    with tab:
+        st.title("NBA Game Winner Predictor")
+        st.caption(
+            f"stats sourced from Basketball Reference ({data_range})"
         )
 
-model       = artefact["model"]
-threshold   = artefact["threshold"]
-df: pd.DataFrame = load_processed_df()
-metrics     = saved["test"]["model"]
-baseline    = saved["test"]["baseline"]
-val_metrics = saved["validation"]["model"]
+        st.divider()
 
-figures = build_evaluation_figures(model, df, TEST_SEASON, threshold)
+        col_home, col_vs, col_visitor, col_btn = st.columns([5, 1, 5, 2])
 
-# The season the Predict tab draws team form from, and advertises in its caption.
-PREDICT_SEASON = TEST_SEASON
-# Span of seasons with games in the data, e.g. "2021–2026" (labels look like "2021-2022")
-DATA_RANGE = f"{df['Season'].min()[:4]}–{df['Season'].max()[-4:]}"
-recent_df = df[df["Season"] == PREDICT_SEASON]
-all_teams = sorted(set(recent_df["Home"]) | set(recent_df["Visitor"]))
+        with col_home:
+            home_team = st.selectbox("Home team", all_teams, key="home")
+        with col_vs:
+            st.write("")
+            st.write("")
+            st.markdown("<div style='text-align:center; font-size:1.3rem; font-weight:600'>vs</div>", unsafe_allow_html=True)
+        with col_visitor:
+            default_visitor_idx = 1 if all_teams[0] == home_team else 0
+            visitor_team = st.selectbox("Visitor team", all_teams, index=default_visitor_idx, key="visitor")
+        with col_btn:
+            st.write("")
+            st.write("")
+            predict = st.button("Predict", use_container_width=True, type="primary")
 
-
-# Tabs
-
-tab1, tab2, tab3, tab4 = st.tabs(["Predict", "Model & Metrics", "Evaluation", "Feature Importance"])
-
-
-# Tab 1 — Predict (home page)
-
-with tab1:
-    st.title("NBA Game Winner Predictor")
-    st.caption(
-        f"stats sourced from Basketball Reference ({DATA_RANGE})"
-    )
-
-    st.divider()
-
-    col_home, col_vs, col_visitor, col_btn = st.columns([5, 1, 5, 2])
-
-    with col_home:
-        home_team = st.selectbox("Home team", all_teams, key="home")
-    with col_vs:
-        st.write("")
-        st.write("")
-        st.markdown("<div style='text-align:center; font-size:1.3rem; font-weight:600'>vs</div>", unsafe_allow_html=True)
-    with col_visitor:
-        default_visitor_idx = 1 if all_teams[0] == home_team else 0
-        visitor_team = st.selectbox("Visitor team", all_teams, index=default_visitor_idx, key="visitor")
-    with col_btn:
-        st.write("")
-        st.write("")
-        predict = st.button("Predict", use_container_width=True, type="primary")
-
-    if predict:
-        if home_team == visitor_team:
-            st.warning("Home and visitor team must be different.")
-        else:
-            h = _get_team_as_home(recent_df, home_team)
-            v = _get_team_as_visitor(recent_df, visitor_team)
-
-            if h is None:
-                st.error(f"No home-game data found for {home_team}.")
-            elif v is None:
-                st.error(f"No away-game data found for {visitor_team}.")
-            elif problem := _missing_stats_message(home_team, h, visitor_team, v):
-                st.error(problem)
+        if predict:
+            if home_team == visitor_team:
+                st.warning("Home and visitor team must be different.")
             else:
-                X_pred   = _build_feature_vector(h, v)
-                prob     = float(model.predict_proba(X_pred)[0, 1])
-                pred_win = prob >= threshold
+                h = _get_team_as_home(recent_df, home_team)
+                v = _get_team_as_visitor(recent_df, visitor_team)
 
-                st.divider()
+                if h is None:
+                    st.error(f"No home-game data found for {home_team}.")
+                elif v is None:
+                    st.error(f"No away-game data found for {visitor_team}.")
+                elif problem := _missing_stats_message(home_team, h, visitor_team, v):
+                    st.error(problem)
+                else:
+                    X_pred   = _build_feature_vector(h, v)
+                    prob     = float(model.predict_proba(X_pred)[0, 1])
+                    pred_win = prob >= threshold
 
-                res_left, res_right = st.columns([1, 2])
+                    st.divider()
 
-                with res_left:
-                    st.metric("Home win probability", f"{prob:.1%}")
-                    if pred_win:
-                        st.success(f"**{home_team} wins**  (threshold {threshold:.2f})")
-                    else:
-                        st.info(f"**{visitor_team} wins**  (threshold {threshold:.2f})")
+                    res_left, res_right = st.columns([1, 2])
 
-                with res_right:
-                    st.plotly_chart(
-                        _plotly_prob_bar(prob, home_team, visitor_team, threshold),
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                    )
+                    with res_left:
+                        st.metric("Home win probability", f"{prob:.1%}")
+                        if pred_win:
+                            st.success(f"**{home_team} wins**  (threshold {threshold:.2f})")
+                        else:
+                            st.info(f"**{visitor_team} wins**  (threshold {threshold:.2f})")
 
-    st.divider()
+                    with res_right:
+                        st.plotly_chart(
+                            _plotly_prob_bar(prob, home_team, visitor_team, threshold),
+                            use_container_width=True,
+                            config={"displayModeBar": False},
+                        )
 
-    st.caption(
-        f"Team stats are drawn from their most recent games in the {PREDICT_SEASON} season. "
-        "Rest days and back-to-back status are assumed equal for both sides."
-    )
+        st.divider()
 
-
-# Tab 2 — Model & Metrics
-
-with tab2:
-    st.header("Model & Metrics")
-    st.caption(
-        f"Evaluated on the {TEST_SEASON} season, which was not used for training "
-        "or for choosing the threshold"
-    )
-
-    st.divider()
-
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric(
-        "Accuracy",
-        f"{metrics['accuracy']:.1%}",
-        f"{metrics['accuracy'] - baseline['accuracy']:+.1%} vs baseline",
-    )
-    col2.metric("ROC-AUC", f"{metrics['roc_auc']:.3f}")
-    col3.metric(
-        "Log Loss",
-        f"{metrics['log_loss']:.4f}",
-        f"{baseline['log_loss'] - metrics['log_loss']:+.4f} vs baseline",
-        delta_color="inverse",
-    )
-    col4.metric(
-        "Brier Score",
-        f"{metrics['brier_score']:.4f}",
-        f"{baseline['brier_score'] - metrics['brier_score']:+.4f} vs baseline",
-        delta_color="inverse",
-    )
-    st.caption(
-        f"For reference, accuracy on the {VAL_SEASON} validation season, where the threshold "
-        f"was chosen, was {val_metrics['accuracy']:.1%}."
-    )
-
-    st.divider()
-
-    pcol1, pcol2, pcol3 = st.columns(3)
-    pcol1.metric("Precision", f"{metrics['precision']:.1%}")
-    pcol2.metric("Recall", f"{metrics['recall']:.1%}")
-    pcol3.metric("F1", f"{metrics['f1']:.3f}")
-    st.caption(
-        f"At this threshold, the model was tuned to target ≥{TARGET_PRECISION:.0%} "
-        f"precision on the validation season. The precision on the test season is "
-        f"{metrics['precision']:.1%}."
-    )
-
-    st.divider()
-
-    st.subheader("About the model")
-    st.markdown(f"""
-        The model predicts whether the **home team wins** a given NBA regular-season game.
-
-        **Data:** Per-game and advanced team statistics from Basketball Reference ({DATA_RANGE} seasons),
-        combined with match-level results.
-
-        **Pipeline:**
-        1. Rolling season-to-date features computed for each team (points, win %, point differential)
-        2. Previous-season advanced stats attached as baseline team-strength signals
-        3. All features expressed as *home minus visitor* differentials to make the prediction symmetric
-        4. XGBoost classifier tuned with Bayesian Optimisation over a time-series cross-validated objective
-        5. Probability outputs calibrated with Platt scaling (sigmoid)
-        6. Classification threshold selected to target ≥ 65% precision on the validation season
-    """)
-
-    st.divider()
-
-    st.subheader("Baseline vs model")
-    comparison = pd.DataFrame({
-        "Metric":   ["Accuracy", "Log Loss", "Brier Score"],
-        "Baseline": [baseline["accuracy"], baseline["log_loss"], baseline["brier_score"]],
-        "Model":    [metrics["accuracy"],  metrics["log_loss"],  metrics["brier_score"]],
-    })
-    st.dataframe(comparison.set_index("Metric"), use_container_width=False)
+        st.caption(
+            f"Team stats are drawn from their most recent games in the {predict_season} season. "
+            "Rest days and back-to-back status are assumed equal for both sides."
+        )
 
 
-# Tab 3 — Evaluation
+def render_overview(tab, metrics: dict, baseline: dict, val_metrics: dict, data_range: str) -> None:
+    with tab:
+        st.header("Model & Metrics")
+        st.caption(
+            f"Evaluated on the {TEST_SEASON} season, which was not used for training "
+            "or for choosing the threshold"
+        )
 
-with tab3:
-    st.header("Model Evaluation")
-    st.caption(
-        f"All results on the {TEST_SEASON} test season "
-        f"(threshold chosen on the {VAL_SEASON} validation season)"
-    )
+        st.divider()
 
-    row1_col1, row1_col2 = st.columns(2)
-    row2_col1, row2_col2 = st.columns(2)
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric(
+            "Accuracy",
+            f"{metrics['accuracy']:.1%}",
+            f"{metrics['accuracy'] - baseline['accuracy']:+.1%} vs baseline",
+        )
+        col2.metric("ROC-AUC", f"{metrics['roc_auc']:.3f}")
+        col3.metric(
+            "Log Loss",
+            f"{metrics['log_loss']:.4f}",
+            f"{baseline['log_loss'] - metrics['log_loss']:+.4f} vs baseline",
+            delta_color="inverse",
+        )
+        col4.metric(
+            "Brier Score",
+            f"{metrics['brier_score']:.4f}",
+            f"{baseline['brier_score'] - metrics['brier_score']:+.4f} vs baseline",
+            delta_color="inverse",
+        )
+        st.caption(
+            f"For reference, accuracy on the {VAL_SEASON} validation season, where the threshold "
+            f"was chosen, was {val_metrics['accuracy']:.1%}."
+        )
 
-    with row1_col1:
-        st.plotly_chart(figures["roc"], use_container_width=True)
+        st.divider()
 
-    with row1_col2:
-        st.plotly_chart(figures["pr"], use_container_width=True)
+        pcol1, pcol2, pcol3 = st.columns(3)
+        pcol1.metric("Precision", f"{metrics['precision']:.1%}")
+        pcol2.metric("Recall", f"{metrics['recall']:.1%}")
+        pcol3.metric("F1", f"{metrics['f1']:.3f}")
+        st.caption(
+            f"At this threshold, the model was tuned to target ≥{TARGET_PRECISION:.0%} "
+            f"precision on the validation season. The precision on the test season is "
+            f"{metrics['precision']:.1%}."
+        )
 
-    with row2_col1:
-        st.plotly_chart(figures["confusion"], use_container_width=True)
+        st.divider()
 
-    with row2_col2:
-        st.plotly_chart(figures["calibration"], use_container_width=True)
+        st.subheader("About the model")
+        st.markdown(f"""
+            The model predicts whether the **home team wins** a given NBA regular-season game.
+
+            **Data:** Per-game and advanced team statistics from Basketball Reference ({data_range} seasons),
+            combined with match-level results.
+
+            **Pipeline:**
+            1. Rolling season-to-date features computed for each team (points, win %, point differential)
+            2. Previous-season advanced stats attached as baseline team-strength signals
+            3. All features expressed as *home minus visitor* differentials to make the prediction symmetric
+            4. XGBoost classifier tuned with Bayesian Optimisation over a time-series cross-validated objective
+            5. Probability outputs calibrated with Platt scaling (sigmoid)
+            6. Classification threshold selected to target ≥ 65% precision on the validation season
+        """)
+
+        st.divider()
+
+        st.subheader("Baseline vs model")
+        comparison = pd.DataFrame({
+            "Metric":   ["Accuracy", "Log Loss", "Brier Score"],
+            "Baseline": [baseline["accuracy"], baseline["log_loss"], baseline["brier_score"]],
+            "Model":    [metrics["accuracy"],  metrics["log_loss"],  metrics["brier_score"]],
+        })
+        st.dataframe(comparison.set_index("Metric"), use_container_width=False)
 
 
-# Tab 4 — Feature Importance
+def render_diagnostics(eval_tab, importance_tab, figures: dict) -> None:
+    with eval_tab:
+        st.header("Model Evaluation")
+        st.caption(
+            f"All results on the {TEST_SEASON} test season "
+            f"(threshold chosen on the {VAL_SEASON} validation season)"
+        )
 
-with tab4:
-    st.header("Feature Importance")
-    st.caption("Gain-based importance from the underlying XGBoost classifier")
+        row1_col1, row1_col2 = st.columns(2)
+        row2_col1, row2_col2 = st.columns(2)
 
-    st.plotly_chart(figures["importance"], use_container_width=True)
+        with row1_col1:
+            st.plotly_chart(figures["roc"], use_container_width=True)
 
-    st.markdown("""
+        with row1_col2:
+            st.plotly_chart(figures["pr"], use_container_width=True)
+
+        with row2_col1:
+            st.plotly_chart(figures["confusion"], use_container_width=True)
+
+        with row2_col2:
+            st.plotly_chart(figures["calibration"], use_container_width=True)
+
+    with importance_tab:
+        st.header("Feature Importance")
+        st.caption("Gain-based importance from the underlying XGBoost classifier")
+
+        st.plotly_chart(figures["importance"], use_container_width=True)
+
+        st.markdown("""
 **Feature groups:**
 - **diff_avg_pts / diff_win_pct / diff_pt_diff_last10** — rolling season-to-date performance gap between home and visitor
 - **home_home_win_pct / visitor_away_win_pct** — venue-specific win rates (home teams tend to win more at home)
 - **diff_SRS / diff_[O|D|N]Rtg / diff_Pace** — previous-season overall team strength signals
 - **diff_TS% / diff_eFG% / ...** — previous-season offensive and defensive efficiency differentials
 - **home_form / visitor_form / diff_form** — recent trajectory (last-5 vs last-10 win rate)
-    """)
+        """)
+
+
+def main() -> None:
+    st.set_page_config(page_title="NBA Winner Predictor", layout="wide")
+
+    artefacts_ready = (
+        (ARTEFACTS_DIR / "model.pkl").exists()
+        and (ARTEFACTS_DIR / "metrics.json").exists()
+        and (ARTEFACTS_DIR / "processed_df.parquet").exists()
+    )
+
+    if not artefacts_ready:
+        st.error("Artefacts not found. Run `python train.py` from the project root first.")
+        st.stop()
+
+    try:
+        artefact = load_model()
+        saved    = load_metrics()
+    except Exception as exc:
+        st.error(
+            "Could not load the training artefacts in `artefacts/`. This usually means they were "
+            "saved by different library versions, are in an outdated format, or a native library "
+            "(OpenMP, needed by XGBoost) is missing. Run `python train.py`, then reload."
+        )
+        with st.expander("Error details"):
+            st.exception(exc)
+        st.stop()
+
+    for lib, trained_with, running in (
+        ("scikit-learn", artefact["sklearn_version"], sklearn.__version__),
+        ("xgboost", artefact["xgboost_version"], xgb.__version__),
+    ):
+        if trained_with != running:
+            st.warning(
+                f"Model was trained with {lib} {trained_with}, but {lib} {running} is installed. "
+                "Predictions may be unreliable; retrain with `python train.py`."
+            )
+
+    model       = artefact["model"]
+    threshold   = artefact["threshold"]
+    df: pd.DataFrame = load_processed_df()
+    metrics     = saved["test"]["model"]
+    baseline    = saved["test"]["baseline"]
+    val_metrics = saved["validation"]["model"]
+
+    figures = build_evaluation_figures(model, df, TEST_SEASON, threshold)
+
+    # The season the Predict tab draws team form from, and advertises in its caption.
+    predict_season = TEST_SEASON
+    # Span of seasons with games in the data, e.g. "2021–2026" (labels look like "2021-2022")
+    data_range = f"{df['Season'].min()[:4]}–{df['Season'].max()[-4:]}"
+    recent_df = df[df["Season"] == predict_season]
+    all_teams = sorted(set(recent_df["Home"]) | set(recent_df["Visitor"]))
+
+    tab1, tab2, tab3, tab4 = st.tabs(["Predict", "Model & Metrics", "Evaluation", "Feature Importance"])
+
+    render_predictor(tab1, model, threshold, recent_df, all_teams, predict_season, data_range)
+    render_overview(tab2, metrics, baseline, val_metrics, data_range)
+    render_diagnostics(tab3, tab4, figures)
+
+
+if __name__ == "__main__":
+    main()
