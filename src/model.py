@@ -1,3 +1,5 @@
+import logging
+import time
 import warnings
 from datetime import datetime, timezone
 
@@ -30,6 +32,8 @@ from src.config import (
     split_by_season,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def train(df) -> tuple:
     """
@@ -49,6 +53,7 @@ def train(df) -> tuple:
     y_train = train_df[TARGET_COL].astype(int)
     X_val   = val_df[FEATURE_COLS]
     y_val   = val_df[TARGET_COL].astype(int)
+    logger.info("Train/val split: %d train rows, %d val rows", len(train_df), len(val_df))
 
     # Bayesian optimisation over XGBoost hyperparameters
     cv = TimeSeriesSplit(n_splits=TSCV_N_SPLITS)
@@ -92,11 +97,17 @@ def train(df) -> tuple:
         random_state=RANDOM_STATE,
         verbose=2,
     )
+    t0 = time.perf_counter()
     optimizer.maximize(init_points=BAYES_OPT_INIT_POINTS, n_iter=BAYES_OPT_N_ITER)
+    logger.info(
+        "Bayesian optimisation finished in %.0fs (%d fits)",
+        time.perf_counter() - t0, BAYES_OPT_INIT_POINTS + BAYES_OPT_N_ITER,
+    )
 
     best_params = optimizer.max["params"]
     best_params["max_depth"]    = int(round(best_params["max_depth"]))
     best_params["n_estimators"] = int(round(best_params["n_estimators"]))
+    logger.info("Best params: %s", best_params)
 
     # fit model on 80% of the data, with 20% going to calibration
     X_fit, X_calib, y_fit, y_calib = train_test_split(
@@ -131,7 +142,8 @@ def train(df) -> tuple:
 
     valid_idx = np.where(precision >= TARGET_PRECISION)[0]
     if valid_idx.size > 0:
-        best_threshold = float(thresholds[valid_idx[np.argmax(recall[valid_idx])]])
+        best_idx = int(valid_idx[np.argmax(recall[valid_idx])])
+        best_threshold = float(thresholds[best_idx])
     else:
         # no threshold reaches TARGET_PRECISION so fall back to the threshold that maximises F1
         f1 = np.divide(
@@ -147,6 +159,10 @@ def train(df) -> tuple:
             f"recall={recall[best_idx]:.1%}).",
             stacklevel=2,
         )
+    logger.info(
+        "Threshold=%.4f (val precision=%.1f%%, recall=%.1f%%)",
+        best_threshold, 100 * precision[best_idx], 100 * recall[best_idx],
+    )
 
     # Serialise the model together with everything needed to use and audit it
     artefact = {
