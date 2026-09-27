@@ -1,24 +1,16 @@
 import json
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
-from sklearn.calibration import CalibrationDisplay
 from sklearn.metrics import (
     accuracy_score,
     brier_score_loss,
-    confusion_matrix,
     f1_score,
     log_loss,
-    precision_recall_curve,
     precision_score,
     recall_score,
     roc_auc_score,
-    roc_curve,
 )
-
-from src.config import CALIBRATION_N_BINS
 
 
 def compute_baseline_metrics(y_true) -> dict:
@@ -58,55 +50,3 @@ def save_metrics(results: dict, path: Path) -> None:
     """
     with open(path, "w") as f:
         json.dump(results, f, indent=2)
-
-
-def plot_roc_curve(y_true, y_pred_prob) -> plt.Figure:
-    fpr, tpr, _ = roc_curve(y_true, y_pred_prob)
-    auc = roc_auc_score(y_true, y_pred_prob)
-
-    fig, ax = plt.subplots()
-    ax.plot(fpr, tpr, label=f"XGBoost (AUC = {auc:.3f})")
-    ax.plot([0, 1], [0, 1], "--", label="Random Guess")
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
-    ax.set_title("ROC Curve — XGBoost")
-    ax.legend()
-    ax.grid(True)
-    return fig
-
-
-def plot_confusion_matrix(y_true, y_pred_prob, threshold: float) -> plt.Figure:
-    y_pred = (y_pred_prob >= threshold).astype(int)
-    cm = confusion_matrix(y_true, y_pred)
-    labels = ["Loss (0)", "Win (1)"]
-
-    fig, ax = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
-                xticklabels=labels, yticklabels=labels, ax=ax)
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("True")
-    ax.set_title("Confusion Matrix")
-    return fig
-
-
-def plot_calibration(calibrated_model, X_val, y_val) -> plt.Figure:
-    fig, ax = plt.subplots()
-    CalibrationDisplay.from_estimator(
-        calibrated_model, X_val, y_val, n_bins=CALIBRATION_N_BINS, ax=ax
-    )
-    ax.set_title("Calibration Curve")
-    return fig
-
-
-def plot_precision_recall(y_true, y_pred_prob, threshold: float) -> plt.Figure:
-    precision, recall, thresholds = precision_recall_curve(y_true, y_pred_prob)
-
-    fig, ax = plt.subplots()
-    ax.plot(thresholds, precision[:-1], label="Precision")
-    ax.plot(thresholds, recall[:-1], label="Recall")
-    ax.axvline(threshold, color="red", linestyle="--", label=f"Threshold = {threshold:.3f}")
-    ax.set_xlabel("Threshold")
-    ax.set_ylabel("Score")
-    ax.set_title("Precision / Recall vs Threshold")
-    ax.legend()
-    return fig

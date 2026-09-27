@@ -56,7 +56,6 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
     df["Season"] = df["Date"].apply(
         lambda d: f"{d.year}-{d.year + 1}" if d.month >= SEASON_START_MONTH else f"{d.year - 1}-{d.year}"
     )
-    df["totalPTS"] = df["visitorPTS"] + df["homePTS"]
 
     # Build long-format team_games table (one row per team per game)
     home = df[["Date", "Season", "Home", "homePTS", "visitorPTS"]].copy()
