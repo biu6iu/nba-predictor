@@ -18,7 +18,7 @@ def separable():
 
 @pytest.fixture
 def unreachable():
-    """Positives score lowest, so no threshold gets near TARGET_PRECISION (best is the 10% base rate)."""
+    """Positives score lowest, so no threshold nears TARGET_PRECISION (best is the base rate)."""
     y = np.array([1] * 10 + [0] * 90)
     prob = np.linspace(0.05, 0.95, 100)
     return y, prob

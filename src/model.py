@@ -1,7 +1,7 @@
 import logging
 import time
 import warnings
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import joblib
 import numpy as np
@@ -25,7 +25,6 @@ from src.config import (
     RANDOM_STATE,
     TARGET_COL,
     TARGET_PRECISION,
-    TEST_SEASON,
     TRAIN_SEASONS,
     TSCV_N_SPLITS,
     VAL_SEASON,
@@ -41,7 +40,8 @@ def split_fit_calib(X, y):
 
 def select_threshold(y_true, y_prob) -> float:
     precision, recall, thresholds = precision_recall_curve(y_true, y_prob)
-    precision, recall = precision[:-1], recall[:-1]  # drop the extra point precision_recall_curve appends
+    # drop the extra point precision_recall_curve appends
+    precision, recall = precision[:-1], recall[:-1]
 
     valid_idx = np.where(precision >= TARGET_PRECISION)[0]
     if valid_idx.size > 0:
@@ -138,7 +138,10 @@ def train(df) -> tuple:
         time.perf_counter() - t0, BAYES_OPT_INIT_POINTS + BAYES_OPT_N_ITER,
     )
 
-    best_params = optimizer.max["params"]
+    best = optimizer.max
+    if best is None:
+        raise RuntimeError("Bayesian optimisation finished without evaluating any parameters.")
+    best_params = best["params"]
     best_params["max_depth"]    = int(round(best_params["max_depth"]))
     best_params["n_estimators"] = int(round(best_params["n_estimators"]))
     logger.info(
@@ -168,7 +171,7 @@ def train(df) -> tuple:
     )
     calibrated_model.fit(X_calib, y_calib)
 
-    # Threshold optimisation on validation set: target precision >= TARGET_PRECISION, maximise recall
+    # Threshold optimisation on validation set: precision >= TARGET_PRECISION, maximise recall
     y_pred_prob = calibrated_model.predict_proba(X_val)[:, 1]
     best_threshold = select_threshold(y_val, y_pred_prob)
 
@@ -180,7 +183,7 @@ def train(df) -> tuple:
         "feature_cols":    list(FEATURE_COLS),
         "sklearn_version": sklearn.__version__,
         "xgboost_version": xgb.__version__,
-        "trained_at":      datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "trained_at":      datetime.now(UTC).isoformat(timespec="seconds"),
         "train_seasons":   list(TRAIN_SEASONS),
     }
     assert set(artefact) == set(MODEL_ARTEFACT_KEYS)

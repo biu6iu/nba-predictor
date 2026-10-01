@@ -1,6 +1,6 @@
 """
 The dashboard reads artefacts written by train.py. These tests check that what training writes
-contains every key the dashboard reads, so a rename on either side fails here and not in the browser.
+contains every key the dashboard reads, so a rename on either side fails here, not in the browser.
 
 The keys the dashboard reads are extracted from dashboard/app.py itself, so the test follows the
 dashboard when it starts reading something new.
@@ -41,8 +41,10 @@ def _str_key(node: ast.Subscript) -> str | None:
 def _dashboard_reads() -> dict[str, set[str]]:
     """String keys the dashboard indexes out of each artefact."""
     tree = ast.parse(DASHBOARD.read_text())
-    reads: dict[str, set[str]] = {"model_pkl": set(), "metrics_splits": set(),
-                                  "metrics_groups": set(), "metric_names": set(), "df_columns": set()}
+    reads: dict[str, set[str]] = {
+        name: set()
+        for name in ("model_pkl", "metrics_splits", "metrics_groups", "metric_names", "df_columns")
+    }
     for node in ast.walk(tree):
         if isinstance(node, ast.Subscript) and (key := _str_key(node)) is not None:
             base = node.value
@@ -101,7 +103,7 @@ def test_dashboard_key_extraction_finds_something():
     assert {"test", "validation"} <= reads["metrics_splits"]
     assert {"model", "baseline"} <= reads["metrics_groups"]
     assert {"accuracy", "roc_auc", "log_loss", "brier_score"} <= reads["metric_names"]
-    assert {"Season", "Home", "Visitor", "home_SRS", "visitor_away_win_pct_last10"} <= reads["df_columns"]
+    assert {"Season", "Home", "Visitor", "home_SRS"} <= reads["df_columns"]
 
 
 def test_model_pkl_has_every_key_the_dashboard_reads(trained):

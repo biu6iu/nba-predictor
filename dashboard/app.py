@@ -31,7 +31,6 @@ from src.config import (
 )
 from src.preprocessor import build_differential_features
 
-
 _BLUE  = "#4C72B0"
 _GREY  = "#D0D0D0"
 _RED   = "#C0392B"
@@ -268,8 +267,8 @@ def _plotly_confusion(y_true, y_pred_prob, threshold: float) -> go.Figure:
     labels = ["Loss", "Win"]
     fig = go.Figure(go.Heatmap(
         z=cm,
-        x=[f"Pred: {l}" for l in labels],
-        y=[f"True: {l}" for l in labels],
+        x=[f"Pred: {label}" for label in labels],
+        y=[f"True: {label}" for label in labels],
         colorscale="Blues",
         showscale=False,
         text=cm,

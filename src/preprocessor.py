@@ -54,7 +54,9 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
     # Parse dates and derive season labels
     df["Date"] = pd.to_datetime(df["Date"], format="%a %b %d %Y")
     df["Season"] = df["Date"].apply(
-        lambda d: f"{d.year}-{d.year + 1}" if d.month >= SEASON_START_MONTH else f"{d.year - 1}-{d.year}"
+        lambda d: (
+            f"{d.year}-{d.year + 1}" if d.month >= SEASON_START_MONTH else f"{d.year - 1}-{d.year}"
+        )
     )
 
     # Build long-format team_games table (one row per team per game)
@@ -165,7 +167,9 @@ def build_features(match_data: pd.DataFrame, team_stats: pd.DataFrame) -> pd.Dat
         how="left",
     )
 
-    df = df.drop(columns=["home_Team", "stats_season", "home_season", "visitor_Team", "visitor_season"])
+    df = df.drop(
+        columns=["home_Team", "stats_season", "home_season", "visitor_Team", "visitor_season"]
+    )
 
     # Sort, set target, compute differential features
     df = df.sort_values("Date").reset_index(drop=True)

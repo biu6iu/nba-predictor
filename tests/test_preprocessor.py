@@ -30,7 +30,9 @@ def test_no_feature_perfectly_tracks_the_outcome(features_df):
     assert (corr.dropna() < 0.99).all(), corr.sort_values(ascending=False).head()
 
 
-def test_features_ignore_the_game_being_predicted_and_later_games(match_data, team_stats, features_df):
+def test_features_ignore_the_game_being_predicted_and_later_games(
+    match_data, team_stats, features_df
+):
     """
     Rewrite one game's result: no feature of that game, or of any earlier game, may change.
     Catches any rolling feature that is missing its .shift(1).

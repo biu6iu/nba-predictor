@@ -39,7 +39,8 @@ def test_baseline_matches_the_base_rate(labels):
     baseline = compute_baseline_metrics(labels)
     assert baseline["accuracy"] == pytest.approx(p, abs=1e-4)
     assert baseline["brier_score"] == pytest.approx(p * (1 - p), abs=1e-4)
-    assert baseline["log_loss"] == pytest.approx(-(p * np.log(p) + (1 - p) * np.log(1 - p)), abs=1e-4)
+    entropy = -(p * np.log(p) + (1 - p) * np.log(1 - p))
+    assert baseline["log_loss"] == pytest.approx(entropy, abs=1e-4)
 
 
 def test_baseline_predicts_the_majority_class_even_when_it_is_a_loss():

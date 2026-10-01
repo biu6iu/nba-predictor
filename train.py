@@ -1,6 +1,13 @@
 import logging
 
-from src.config import ARTEFACTS_DIR, FEATURE_COLS, TARGET_COL, TEST_SEASON, VAL_SEASON, split_by_season
+from src.config import (
+    ARTEFACTS_DIR,
+    FEATURE_COLS,
+    TARGET_COL,
+    TEST_SEASON,
+    VAL_SEASON,
+    split_by_season,
+)
 from src.data_loader import load_match_data, load_team_stats
 from src.evaluate import compute_baseline_metrics, compute_metrics, save_metrics
 from src.logging_config import configure_logging

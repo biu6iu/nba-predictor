@@ -52,7 +52,9 @@ def make_team_stats(seed: int = 1) -> pd.DataFrame:
     rows = []
     for season in STATS_SEASONS:
         for team in TEAMS:
-            rows.append({"Team": team, "season": season, **dict(zip(STAT_COLS, rng.normal(size=len(STAT_COLS))))})
+            values = rng.normal(size=len(STAT_COLS))
+            stats = dict(zip(STAT_COLS, values, strict=True))
+            rows.append({"Team": team, "season": season, **stats})
     return pd.DataFrame(rows)
 
 

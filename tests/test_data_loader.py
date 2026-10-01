@@ -12,7 +12,9 @@ def _team_names(playoff_marked: bool = True) -> list[str]:
     return [f"Team {i:02d}{'*' if playoff_marked and i < 16 else ''}" for i in range(N_TEAMS)]
 
 
-def _write_season(directory, year: int, per_game_teams: list[str], advanced_teams: list[str]) -> None:
+def _write_season(
+    directory, year: int, per_game_teams: list[str], advanced_teams: list[str]
+) -> None:
     pd.DataFrame({
         "Team": per_game_teams, "G": 82, "MP": 240.0, "PTS": 110.0,
     }).to_csv(directory / f"{year}PerGameData.csv", index=False)
