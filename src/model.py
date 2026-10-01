@@ -35,6 +35,40 @@ from src.config import (
 logger = logging.getLogger(__name__)
 
 
+def split_fit_calib(X, y):
+    return train_test_split(X, y, test_size=CALIBRATION_TEST_SIZE, shuffle=False)
+
+
+def select_threshold(y_true, y_prob) -> float:
+    precision, recall, thresholds = precision_recall_curve(y_true, y_prob)
+    precision, recall = precision[:-1], recall[:-1]  # drop the extra point precision_recall_curve appends
+
+    valid_idx = np.where(precision >= TARGET_PRECISION)[0]
+    if valid_idx.size > 0:
+        best_idx = int(valid_idx[np.argmax(recall[valid_idx])])
+        best_threshold = float(thresholds[best_idx])
+    else:
+        # no threshold reaches TARGET_PRECISION so fall back to the threshold that maximises F1
+        f1 = np.divide(
+            2 * precision * recall, precision + recall,
+            out=np.zeros_like(precision), where=(precision + recall) > 0,
+        )
+        best_idx = int(np.argmax(f1))
+        best_threshold = float(thresholds[best_idx])
+        warnings.warn(
+            f"No threshold reached the target precision of {TARGET_PRECISION:.0%} on the "
+            f"validation set (best precision was {precision.max():.1%}). Falling back to the "
+            f"max-F1 threshold {best_threshold:.4f} (precision={precision[best_idx]:.1%}, "
+            f"recall={recall[best_idx]:.1%}).",
+            stacklevel=2,
+        )
+    logger.info(
+        "Threshold=%.4f (val precision=%.1f%%, recall=%.1f%%)",
+        best_threshold, 100 * precision[best_idx], 100 * recall[best_idx],
+    )
+    return best_threshold
+
+
 def train(df) -> tuple:
     """
     Run the full training pipeline on the feature-engineered DataFrame.
@@ -113,11 +147,7 @@ def train(df) -> tuple:
     )
 
     # fit model on 80% of the data, with 20% going to calibration
-    X_fit, X_calib, y_fit, y_calib = train_test_split(
-        X_train, y_train,
-        test_size=CALIBRATION_TEST_SIZE,
-        shuffle=False,
-    )
+    X_fit, X_calib, y_fit, y_calib = split_fit_calib(X_train, y_train)
 
     model = xgb.XGBClassifier(
         **best_params,
@@ -140,32 +170,7 @@ def train(df) -> tuple:
 
     # Threshold optimisation on validation set: target precision >= TARGET_PRECISION, maximise recall
     y_pred_prob = calibrated_model.predict_proba(X_val)[:, 1]
-    precision, recall, thresholds = precision_recall_curve(y_val, y_pred_prob)
-    precision, recall = precision[:-1], recall[:-1]  # drop the extra point precision_recall_curve appends
-
-    valid_idx = np.where(precision >= TARGET_PRECISION)[0]
-    if valid_idx.size > 0:
-        best_idx = int(valid_idx[np.argmax(recall[valid_idx])])
-        best_threshold = float(thresholds[best_idx])
-    else:
-        # no threshold reaches TARGET_PRECISION so fall back to the threshold that maximises F1
-        f1 = np.divide(
-            2 * precision * recall, precision + recall,
-            out=np.zeros_like(precision), where=(precision + recall) > 0,
-        )
-        best_idx = int(np.argmax(f1))
-        best_threshold = float(thresholds[best_idx])
-        warnings.warn(
-            f"No threshold reached the target precision of {TARGET_PRECISION:.0%} on the "
-            f"validation set (best precision was {precision.max():.1%}). Falling back to the "
-            f"max-F1 threshold {best_threshold:.4f} (precision={precision[best_idx]:.1%}, "
-            f"recall={recall[best_idx]:.1%}).",
-            stacklevel=2,
-        )
-    logger.info(
-        "Threshold=%.4f (val precision=%.1f%%, recall=%.1f%%)",
-        best_threshold, 100 * precision[best_idx], 100 * recall[best_idx],
-    )
+    best_threshold = select_threshold(y_val, y_pred_prob)
 
     # Serialise the model together with everything needed to use and audit it
     artefact = {
