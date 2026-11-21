@@ -1,0 +1,16 @@
+# Build and run: docker compose up -d --build   (then open http://localhost:8501)
+# The health check comes from the Dockerfile's HEALTHCHECK.
+services:
+  dashboard:
+    build: .
+    image: nba-predictor:latest
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+    # Streamlit only needs to write to /tmp and its home directory
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/app
+    security_opt:
+      - no-new-privileges:true
