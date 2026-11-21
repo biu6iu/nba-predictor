@@ -1,0 +1,21 @@
+# data/ and config/ are needed by the train stage, so they are not listed here.
+.git
+.github
+.venv
+venv
+*.egg-info
+**/__pycache__
+**/*.py[cod]
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.ipynb_checkpoints
+**/.DS_Store
+.vscode
+.idea
+.env
+# Built fresh in the train stage, so stale local files never reach the image
+artefacts/
+tests/
+k8s/
+PHASE5_TODO.md
