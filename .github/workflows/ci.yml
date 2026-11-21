@@ -32,3 +32,22 @@ jobs:
 
       - name: Test (pytest)
         run: pytest
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Builds both stages: trains with --skip-tuning, then runs the smoke test in the runtime stage
+      - name: Build image
+        run: docker build -t nba-predictor:ci .
+
+      - name: Health check
+        run: |
+          docker run -d --name app -p 8501:8501 nba-predictor:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8501/_stcore/health && exit 0
+            sleep 2
+          done
+          docker logs app
+          exit 1
