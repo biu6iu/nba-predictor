@@ -1,7 +1,10 @@
+import argparse
+import json
 import logging
 
 from src.config import (
     ARTEFACTS_DIR,
+    BEST_PARAMS_PATH,
     FEATURE_COLS,
     TARGET_COL,
     TEST_SEASON,
@@ -36,9 +39,33 @@ def evaluate_split(model, df, season, threshold):
     return metrics, X, y, y_prob
 
 
-def main():
+def load_best_params(path=BEST_PARAMS_PATH) -> dict:
+    if not path.exists():
+        raise SystemExit(f"--skip-tuning needs {path}. Run train.py once without it to create it.")
+    return json.loads(path.read_text())
+
+
+def save_best_params(params: dict, path=BEST_PARAMS_PATH) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(params, indent=2) + "\n")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Train the model and write artefacts/.")
+    parser.add_argument(
+        "--skip-tuning",
+        action="store_true",
+        help="reuse the hyperparameters in config/best_params.json instead of tuning",
+    )
+    args = parser.parse_args(argv)
+
     configure_logging()
     ARTEFACTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Fail before loading data if the saved params are missing
+    best_params = load_best_params() if args.skip_tuning else None
+    if args.skip_tuning:
+        logger.info("Skipping tuning, using params from %s", BEST_PARAMS_PATH)
 
     # Load raw data
     match_data = load_match_data()
@@ -53,7 +80,10 @@ def main():
     df.to_parquet(ARTEFACTS_DIR / "processed_df.parquet", index=False)
 
     # Train
-    calibrated_model, best_threshold, best_params = train(df)
+    calibrated_model, best_threshold, best_params = train(df, best_params)
+    if not args.skip_tuning:
+        save_best_params(best_params)
+        logger.info("Saved tuned params to %s (commit it for --skip-tuning)", BEST_PARAMS_PATH)
 
     # The threshold was chosen on the validation season, so its metrics are optimistic
     # The test season was never used for any decision and gives the honest numbers

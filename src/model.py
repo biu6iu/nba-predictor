@@ -69,27 +69,8 @@ def select_threshold(y_true, y_prob) -> float:
     return best_threshold
 
 
-def train(df) -> tuple:
-    """
-    Run the full training pipeline on the feature-engineered DataFrame.
-
-    Returns
-    -------
-    calibrated_model : CalibratedClassifierCV
-    best_threshold   : float
-    best_params      : dict
-    """
-    # Train / val split
-    train_df = df[df["Season"].isin(TRAIN_SEASONS)]
-    val_df   = split_by_season(df, VAL_SEASON)
-
-    X_train = train_df[FEATURE_COLS]
-    y_train = train_df[TARGET_COL].astype(int)
-    X_val   = val_df[FEATURE_COLS]
-    y_val   = val_df[TARGET_COL].astype(int)
-    logger.info("Train/val split: %d train rows, %d val rows", len(train_df), len(val_df))
-
-    # Bayesian optimisation over XGBoost hyperparameters
+def tune(X_train, y_train) -> dict:
+    """Bayesian optimisation over XGBoost hyperparameters, scored by time-series CV log loss."""
     cv = TimeSeriesSplit(n_splits=TSCV_N_SPLITS)
 
     def xgb_cv(
@@ -144,6 +125,33 @@ def train(df) -> tuple:
     best_params = best["params"]
     best_params["max_depth"]    = int(round(best_params["max_depth"]))
     best_params["n_estimators"] = int(round(best_params["n_estimators"]))
+    return best_params
+
+
+def train(df, best_params: dict | None = None) -> tuple:
+    """
+    Run the full training pipeline on the feature-engineered DataFrame.
+
+    Pass `best_params` to skip tuning and train only the final model and calibration.
+
+    Returns
+    -------
+    calibrated_model : CalibratedClassifierCV
+    best_threshold   : float
+    best_params      : dict
+    """
+    # Train / val split
+    train_df = df[df["Season"].isin(TRAIN_SEASONS)]
+    val_df   = split_by_season(df, VAL_SEASON)
+
+    X_train = train_df[FEATURE_COLS]
+    y_train = train_df[TARGET_COL].astype(int)
+    X_val   = val_df[FEATURE_COLS]
+    y_val   = val_df[TARGET_COL].astype(int)
+    logger.info("Train/val split: %d train rows, %d val rows", len(train_df), len(val_df))
+
+    if best_params is None:
+        best_params = tune(X_train, y_train)
     logger.info(
         "Best params: %s",
         {k: round(float(v), 4) if isinstance(v, float) else v for k, v in best_params.items()},

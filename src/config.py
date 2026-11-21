@@ -7,6 +7,8 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 ARTEFACTS_DIR = PROJECT_ROOT / "artefacts"
+# Tuned hyperparameters, committed so `train.py --skip-tuning` can reuse them
+BEST_PARAMS_PATH = PROJECT_ROOT / "config" / "best_params.json"
 
 # Reproducibility
 

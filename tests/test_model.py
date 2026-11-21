@@ -67,3 +67,44 @@ def test_calibration_set_is_the_later_games():
     y = pd.Series(np.arange(100) % 2)
     X_fit, X_calib, _, _ = split_fit_calib(X, y)
     assert X_fit.index.max() < X_calib.index.min()
+
+
+def test_train_with_given_params_skips_tuning(tmp_path, monkeypatch):
+    import train as train_script
+    from src import model as model_module
+    from src.config import FEATURE_COLS, TARGET_COL, TRAIN_SEASONS, VAL_SEASON
+
+    rng = np.random.default_rng(0)
+    seasons = [*TRAIN_SEASONS, VAL_SEASON]
+    X = rng.normal(size=(200 * len(seasons), len(FEATURE_COLS)))
+    df = pd.DataFrame(X, columns=FEATURE_COLS)
+    df["Season"] = np.repeat(seasons, 200)
+    df[TARGET_COL] = (df[FEATURE_COLS[0]] + rng.normal(scale=1.5, size=len(df))) > 0
+
+    params = {
+        "max_depth": 3, "learning_rate": 0.05, "n_estimators": 50, "subsample": 0.8,
+        "colsample_bytree": 0.7, "min_child_weight": 5, "gamma": 1.0,
+        "reg_alpha": 1.0, "reg_lambda": 2.0,
+    }
+    # params survive the save/load round trip with ints intact
+    path = tmp_path / "config" / "best_params.json"
+    train_script.save_best_params(params, path)
+    assert train_script.load_best_params(path) == params
+
+    def no_tuning(*_):
+        raise AssertionError("tune() must not run when params are given")
+
+    monkeypatch.setattr(model_module, "tune", no_tuning)
+    monkeypatch.setattr(model_module, "ARTEFACTS_DIR", tmp_path)
+    calibrated, threshold, used = model_module.train(df, train_script.load_best_params(path))
+
+    assert used == params
+    assert 0 < threshold < 1
+    assert (tmp_path / "model.pkl").exists()
+
+
+def test_load_best_params_missing_file_exits_with_a_hint(tmp_path):
+    import train as train_script
+
+    with pytest.raises(SystemExit, match="without it"):
+        train_script.load_best_params(tmp_path / "missing.json")
