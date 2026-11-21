@@ -3,7 +3,7 @@ ENV ?= nba-predictor
 RUN ?= conda run --no-capture-output -n $(ENV)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup train train-fast dashboard test lint
+.PHONY: help setup train train-fast smoke dashboard test lint
 
 help:  ## Show available targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -17,6 +17,9 @@ train:  ## Train the model and write artefacts/
 
 train-fast:  ## Retrain with the saved params in config/best_params.json (no tuning)
 	$(RUN) python train.py --skip-tuning
+
+smoke:  ## Check the trained artefacts load and predict
+	$(RUN) python -m src.smoke_test
 
 dashboard:  ## Launch the Streamlit dashboard
 	$(RUN) streamlit run dashboard/app.py
